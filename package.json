@@ -1,0 +1,24 @@
+{
+  "name": "edge-sql",
+  "author": {
+    "name": "Tomasz Janczuk <tomasz@janczuk.org>",
+    "url": "http://tomasz.janczuk.org",
+    "twitter": "tjanczuk"
+  },
+  "version": "0.1.0-pre",
+  "description": "Edge-sql: access SQL databases from Node.js using Edge.js and ADO.NET",
+  "tags" : ["edge", "net", "clr", "c#", "managed", ".net", "ado.net"],
+  "main": "./lib/edge-sql.js",
+  "engines": { "node": ">= 0.6" },
+  "licenses": [ { "type": "Apache", "url": "http://www.apache.org/licenses/LICENSE-2.0" } ],
+  "dependencies": {
+  },
+  "homepage": "http://tjanczuk.github.com/edge-sql",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:tjanczuk/edge-sql.git"
+  },
+  "bugs" : {
+    "url" : "http://github.com/tjanczuk/edge-sql/issues"
+  }
+}

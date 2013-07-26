@@ -29,7 +29,7 @@ public class EdgeCompiler
         {
             return async (queryParameters) =>
             {
-                return await this.ExecuteNonQuery(connectionString, command, (IDictionary<string, object>)queryParameters);
+                return await this.ExecuteQuery(connectionString, command, (IDictionary<string, object>)queryParameters);
             };
         }
         else 

@@ -74,9 +74,13 @@ public class EdgeCompiler
                         object[] resultRecord = new object[record.FieldCount];
                         record.GetValues(resultRecord);
                         for (int i = 0; i < record.FieldCount; i++)
-                        {
+                        {      
                             Type type = record.GetFieldType(i);
-                            if (type == typeof(byte[]) || type == typeof(char[]))
+                            if (resultRecord[i] is System.DBNull)
+                            {
+                                resultRecord[i] = null;
+                            }
+                            else if (type == typeof(byte[]) || type == typeof(char[]))
                             {
                                 resultRecord[i] = Convert.ToBase64String((byte[])resultRecord[i]);
                             }

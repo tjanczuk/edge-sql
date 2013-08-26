@@ -16,26 +16,10 @@ public class EdgeCompiler
             connectionString = (string)tmp;
         }
 
-        if (command.StartsWith("select ", StringComparison.InvariantCultureIgnoreCase))
+        return async (queryParameters) =>
         {
-            return async (queryParameters) => 
-            {
-                return await this.ExecuteQuery(connectionString, command, (IDictionary<string,object>)queryParameters);
-            };
-        }
-        else if (command.StartsWith("insert ", StringComparison.InvariantCultureIgnoreCase)
-            || command.StartsWith("update ", StringComparison.InvariantCultureIgnoreCase)
-            || command.StartsWith("delete ", StringComparison.InvariantCultureIgnoreCase))
-        {
-            return async (queryParameters) =>
-            {
-                return await this.ExecuteQuery(connectionString, command, (IDictionary<string, object>)queryParameters);
-            };
-        }
-        else 
-        {
-            throw new InvalidOperationException("Unsupported type of SQL command. Only select, insert, update, and delete are supported.");
-        }
+            return await this.ExecuteQuery(connectionString, command, (IDictionary<string, object>)queryParameters);
+        };
     }
 
     void AddParamaters(SqlCommand command, IDictionary<string, object> parameters)

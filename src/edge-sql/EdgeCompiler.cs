@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Dynamic;
 using System.Threading.Tasks;
 using System.Data;
 using System.Data.SqlClient;
@@ -18,9 +19,9 @@ public class EdgeCompiler
 
         if (command.StartsWith("select ", StringComparison.InvariantCultureIgnoreCase))
         {
-            return async (queryParameters) => 
+            return async (queryParameters) =>
             {
-                return await this.ExecuteQuery(connectionString, command, (IDictionary<string,object>)queryParameters);
+                return await this.ExecuteQuery(connectionString, command, (IDictionary<string, object>)queryParameters);
             };
         }
         else if (command.StartsWith("insert ", StringComparison.InvariantCultureIgnoreCase)
@@ -32,13 +33,13 @@ public class EdgeCompiler
                 return await this.ExecuteNonQuery(connectionString, command, (IDictionary<string, object>)queryParameters);
             };
         }
-        else 
+        else
         {
             throw new InvalidOperationException("Unsupported type of SQL command. Only select, insert, update, and delete are supported.");
         }
     }
 
-    void AddParamaters(SqlCommand command, IDictionary<string, object> parameters)
+    private void AddParamaters(SqlCommand command, IDictionary<string, object> parameters)
     {
         if (parameters != null)
         {
@@ -49,33 +50,28 @@ public class EdgeCompiler
         }
     }
 
-    async Task<object> ExecuteQuery(string connectionString, string commandString, IDictionary<string, object> parameters)
+    private async Task<object> ExecuteQuery(string connectionString, string commandString, IDictionary<string, object> parameters)
     {
-        List<object> rows = new List<object>();
+        var rows = new List<object>();
 
-        using (SqlConnection connection = new SqlConnection(connectionString))
+        using (var connection = new SqlConnection(connectionString))
         {
-            using (SqlCommand command = new SqlCommand(commandString, connection))
+            using (var command = new SqlCommand(commandString, connection))
             {
                 this.AddParamaters(command, parameters);
                 await connection.OpenAsync();
-                using (SqlDataReader reader = await command.ExecuteReaderAsync(CommandBehavior.CloseConnection))
+                using (var reader = await command.ExecuteReaderAsync(CommandBehavior.CloseConnection))
                 {
-                    object[] fieldNames = new object[reader.FieldCount];
-                    for (int i = 0; i < reader.FieldCount; i++)
-                    {
-                        fieldNames[i] = reader.GetName(i);
-                    }
-                    rows.Add(fieldNames);
-
-                    IDataRecord record = (IDataRecord)reader;
+                    var record = (IDataRecord)reader;
                     while (await reader.ReadAsync())
                     {
-                        object[] resultRecord = new object[record.FieldCount];
+                        var dataObject = new ExpandoObject() as IDictionary<string, Object>;
+                        var resultRecord = new object[record.FieldCount];
                         record.GetValues(resultRecord);
+
                         for (int i = 0; i < record.FieldCount; i++)
                         {
-                            Type type = record.GetFieldType(i);
+                            var type = record.GetFieldType(i);
                             if (type == typeof(byte[]) || type == typeof(char[]))
                             {
                                 resultRecord[i] = Convert.ToBase64String((byte[])resultRecord[i]);
@@ -88,9 +84,10 @@ public class EdgeCompiler
                             {
                                 resultRecord[i] = "<IDataReader>";
                             }
-                        }
 
-                        rows.Add(resultRecord);
+                            dataObject.Add(record.GetName(i), resultRecord[i]);
+                        }
+                        rows.Add(dataObject); 
                     }
                 }
             }
@@ -99,11 +96,11 @@ public class EdgeCompiler
         return rows;
     }
 
-    async Task<object> ExecuteNonQuery(string connectionString, string commandString, IDictionary<string, object> parameters)
+    private async Task<object> ExecuteNonQuery(string connectionString, string commandString, IDictionary<string, object> parameters)
     {
-        using (SqlConnection connection = new SqlConnection(connectionString))
+        using (var connection = new SqlConnection(connectionString))
         {
-            using (SqlCommand command = new SqlCommand(commandString, connection))
+            using (var command = new SqlCommand(commandString, connection))
             {
                 this.AddParamaters(command, parameters);
                 await connection.OpenAsync();

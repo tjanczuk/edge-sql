@@ -1,7 +1,14 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBD}") = "edge-sql", "edge-sql.csproj", "{C64EE1C0-8A26-426E-B955-B46BC6C13055}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "edge-sql", "edge-sql.csproj", "{C64EE1C0-8A26-426E-B955-B46BC6C13055}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{BDA22397-9AC3-444F-A38A-4CC631F2070F}"
+	ProjectSection(SolutionItems) = preProject
+		.nuget\NuGet.Config = .nuget\NuGet.Config
+		.nuget\NuGet.exe = .nuget\NuGet.exe
+		.nuget\NuGet.targets = .nuget\NuGet.targets
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

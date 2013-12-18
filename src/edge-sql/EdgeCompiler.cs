@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Dynamic;
 using System.Threading.Tasks;
 using System.Data;
 using System.Data.SqlClient;
+using ServiceStack;
 
 public class EdgeCompiler
 {
@@ -18,9 +20,9 @@ public class EdgeCompiler
 
         if (command.StartsWith("select ", StringComparison.InvariantCultureIgnoreCase))
         {
-            return async (queryParameters) => 
+            return async (queryParameters) =>
             {
-                return await this.ExecuteQuery(connectionString, command, (IDictionary<string,object>)queryParameters);
+                return await this.ExecuteQuery(connectionString, command, (IDictionary<string, object>)queryParameters);
             };
         }
         else if (command.StartsWith("insert ", StringComparison.InvariantCultureIgnoreCase)
@@ -32,7 +34,7 @@ public class EdgeCompiler
                 return await this.ExecuteNonQuery(connectionString, command, (IDictionary<string, object>)queryParameters);
             };
         }
-        else 
+        else
         {
             throw new InvalidOperationException("Unsupported type of SQL command. Only select, insert, update, and delete are supported.");
         }
@@ -61,18 +63,22 @@ public class EdgeCompiler
                 await connection.OpenAsync();
                 using (SqlDataReader reader = await command.ExecuteReaderAsync(CommandBehavior.CloseConnection))
                 {
-                    object[] fieldNames = new object[reader.FieldCount];
-                    for (int i = 0; i < reader.FieldCount; i++)
-                    {
-                        fieldNames[i] = reader.GetName(i);
-                    }
-                    rows.Add(fieldNames);
+
+                    //object[] fieldNames = new object[reader.FieldCount];
+                    //for (int i = 0; i < reader.FieldCount; i++)
+                    //{
+                    //    //fieldNames[i] = reader.GetName(i);
+                    //    x.Add(reader.GetName(i), string.Empty);
+                    //}
+                    //rows.Add(fieldNames);
 
                     IDataRecord record = (IDataRecord)reader;
                     while (await reader.ReadAsync())
                     {
+                        var x = new ExpandoObject() as IDictionary<string, Object>;
                         object[] resultRecord = new object[record.FieldCount];
                         record.GetValues(resultRecord);
+                        
                         for (int i = 0; i < record.FieldCount; i++)
                         {
                             Type type = record.GetFieldType(i);
@@ -88,15 +94,18 @@ public class EdgeCompiler
                             {
                                 resultRecord[i] = "<IDataReader>";
                             }
-                        }
 
-                        rows.Add(resultRecord);
+                           
+                            x.Add(record.GetName(i), resultRecord[i]);
+                        }
+                        
+                        rows.Add(x);
                     }
                 }
             }
         }
 
-        return rows;
+        return rows.ToJson();
     }
 
     async Task<object> ExecuteNonQuery(string connectionString, string commandString, IDictionary<string, object> parameters)

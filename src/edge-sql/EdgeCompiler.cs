@@ -4,7 +4,6 @@ using System.Dynamic;
 using System.Threading.Tasks;
 using System.Data;
 using System.Data.SqlClient;
-using ServiceStack;
 
 public class EdgeCompiler
 {
@@ -40,7 +39,7 @@ public class EdgeCompiler
         }
     }
 
-    void AddParamaters(SqlCommand command, IDictionary<string, object> parameters)
+    private void AddParamaters(SqlCommand command, IDictionary<string, object> parameters)
     {
         if (parameters != null)
         {
@@ -51,37 +50,28 @@ public class EdgeCompiler
         }
     }
 
-    async Task<object> ExecuteQuery(string connectionString, string commandString, IDictionary<string, object> parameters)
+    private async Task<object> ExecuteQuery(string connectionString, string commandString, IDictionary<string, object> parameters)
     {
-        List<object> rows = new List<object>();
+        var rows = new List<object>();
 
-        using (SqlConnection connection = new SqlConnection(connectionString))
+        using (var connection = new SqlConnection(connectionString))
         {
-            using (SqlCommand command = new SqlCommand(commandString, connection))
+            using (var command = new SqlCommand(commandString, connection))
             {
                 this.AddParamaters(command, parameters);
                 await connection.OpenAsync();
-                using (SqlDataReader reader = await command.ExecuteReaderAsync(CommandBehavior.CloseConnection))
+                using (var reader = await command.ExecuteReaderAsync(CommandBehavior.CloseConnection))
                 {
-
-                    //object[] fieldNames = new object[reader.FieldCount];
-                    //for (int i = 0; i < reader.FieldCount; i++)
-                    //{
-                    //    //fieldNames[i] = reader.GetName(i);
-                    //    x.Add(reader.GetName(i), string.Empty);
-                    //}
-                    //rows.Add(fieldNames);
-
-                    IDataRecord record = (IDataRecord)reader;
+                    var record = (IDataRecord)reader;
                     while (await reader.ReadAsync())
                     {
-                        var x = new ExpandoObject() as IDictionary<string, Object>;
-                        object[] resultRecord = new object[record.FieldCount];
+                        var dataObject = new ExpandoObject() as IDictionary<string, Object>;
+                        var resultRecord = new object[record.FieldCount];
                         record.GetValues(resultRecord);
-                        
+
                         for (int i = 0; i < record.FieldCount; i++)
                         {
-                            Type type = record.GetFieldType(i);
+                            var type = record.GetFieldType(i);
                             if (type == typeof(byte[]) || type == typeof(char[]))
                             {
                                 resultRecord[i] = Convert.ToBase64String((byte[])resultRecord[i]);
@@ -95,24 +85,22 @@ public class EdgeCompiler
                                 resultRecord[i] = "<IDataReader>";
                             }
 
-                           
-                            x.Add(record.GetName(i), resultRecord[i]);
+                            dataObject.Add(record.GetName(i), resultRecord[i]);
                         }
-                        
-                        rows.Add(x);
+                        rows.Add(dataObject);
                     }
                 }
             }
         }
 
-        return rows.ToJson();
+        return rows;
     }
 
-    async Task<object> ExecuteNonQuery(string connectionString, string commandString, IDictionary<string, object> parameters)
+    private async Task<object> ExecuteNonQuery(string connectionString, string commandString, IDictionary<string, object> parameters)
     {
-        using (SqlConnection connection = new SqlConnection(connectionString))
+        using (var connection = new SqlConnection(connectionString))
         {
-            using (SqlCommand command = new SqlCommand(commandString, connection))
+            using (var command = new SqlCommand(commandString, connection))
             {
                 this.AddParamaters(command, parameters);
                 await connection.OpenAsync();

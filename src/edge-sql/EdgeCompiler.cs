@@ -87,7 +87,7 @@ public class EdgeCompiler
 
                             dataObject.Add(record.GetName(i), resultRecord[i]);
                         }
-                        rows.Add(dataObject);
+                        rows.Add(dataObject); 
                     }
                 }
             }

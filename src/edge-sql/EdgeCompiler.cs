@@ -45,7 +45,7 @@ public class EdgeCompiler
         {
             foreach (KeyValuePair<string, object> parameter in parameters)
             {
-                command.Parameters.AddWithValue(parameter.Key, parameter.Value);
+                command.Parameters.AddWithValue(parameter.Key, parameter.Value ?? DBNull.Value);
             }
         }
     }

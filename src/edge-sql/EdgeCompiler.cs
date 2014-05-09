@@ -72,6 +72,12 @@ public class EdgeCompiler
                             {
                                 resultRecord[i] = resultRecord[i].ToString();
                             }
+                            else if (type == typeof (Int16) || type == typeof (UInt16)) {
+                                    resultRecord[i] = Convert.ToInt32(resultRecord[i]);
+                            }
+                            else if (type == typeof(Decimal)) {
+                                    resultRecord[i] = Convert.ToDouble(resultRecord[i]);
+                            }
                             else if (type == typeof(IDataReader))
                             {
                                 resultRecord[i] = "<IDataReader>";

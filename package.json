@@ -1,9 +1,8 @@
 {
-  "name": "edge-sql",
+  "name": "edge-sql-maxpower",
   "author": {
-    "name": "Tomasz Janczuk <tomasz@janczuk.org>",
-    "url": "http://tomasz.janczuk.org",
-    "twitter": "tjanczuk"
+    "name": "Gaetano Lazzo",
+    "url": "https://github.com/gaelazzo"
   },
   "version": "0.1.1-pre",
   "description": "Edge-sql: access SQL databases from Node.js using Edge.js and ADO.NET",
@@ -13,12 +12,12 @@
   "licenses": [ { "type": "Apache", "url": "http://www.apache.org/licenses/LICENSE-2.0" } ],
   "dependencies": {
   },
-  "homepage": "http://tjanczuk.github.com/edge-sql",
+  "homepage": "http://gaelazzo/edge-sql",
   "repository": {
     "type": "git",
-    "url": "git@github.com:tjanczuk/edge-sql.git"
+    "url": "git@github.com:gaelazzo/edge-sql.git"
   },
   "bugs" : {
-    "url" : "http://github.com/tjanczuk/edge-sql/issues"
+    "url" : "http://github.com/gaelazzo/edge-sql/issues"
   }
 }

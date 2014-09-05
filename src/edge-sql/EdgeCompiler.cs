@@ -135,7 +135,8 @@ public class EdgeCompiler
         {
             SqlCommand command = new SqlCommand(commandString.Substring(5).TrimEnd(), connection)
             {
-                CommandType = CommandType.StoredProcedure
+                CommandType = CommandType.StoredProcedure,
+                CommandTimeout = 0
             };
             using (command)
             {

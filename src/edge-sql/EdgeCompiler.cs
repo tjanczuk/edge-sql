@@ -11,17 +11,22 @@ public class EdgeCompiler
     {
         string command = ((string)parameters["source"]).TrimStart();
         string connectionString = Environment.GetEnvironmentVariable("EDGE_SQL_CONNECTION_STRING");
+        int timeout = 30; //The time in seconds to wait for the command to execute. The default is 30 seconds.
         object tmp;
         if (parameters.TryGetValue("connectionString", out tmp))
         {
             connectionString = (string)tmp;
+        }
+        if (parameters.TryGetValue("timeout", out tmp))
+        {
+            timeout = (int)tmp;
         }
 
         if (command.StartsWith("select ", StringComparison.InvariantCultureIgnoreCase))
         {
             return async (queryParameters) =>
             {
-                return await this.ExecuteQuery(connectionString, command, (IDictionary<string, object>)queryParameters);
+                return await this.ExecuteQuery(connectionString, command, timeout, (IDictionary<string, object>)queryParameters);
             };
         }
         else if (command.StartsWith("insert ", StringComparison.InvariantCultureIgnoreCase)
@@ -30,7 +35,7 @@ public class EdgeCompiler
         {
             return async (queryParameters) =>
             {
-                return await this.ExecuteNonQuery(connectionString, command, (IDictionary<string, object>)queryParameters);
+                return await this.ExecuteNonQuery(connectionString, command, timeout, (IDictionary<string, object>)queryParameters);
             };
         }
         else if (command.StartsWith("exec ", StringComparison.InvariantCultureIgnoreCase))
@@ -39,6 +44,7 @@ public class EdgeCompiler
                 this.ExecuteStoredProcedure(
                     connectionString,
                     command,
+                    timeout,
                     (IDictionary<string, object>)queryParameters);
         }
         else
@@ -58,11 +64,15 @@ public class EdgeCompiler
         }
     }
 
-    async Task<object> ExecuteQuery(string connectionString, string commandString, IDictionary<string, object> parameters)
+    async Task<object> ExecuteQuery(string connectionString, string commandString, int timeout, IDictionary<string, object> parameters)
     {
         using (SqlConnection connection = new SqlConnection(connectionString))
         {
-            using (var command = new SqlCommand(commandString, connection))
+            SqlCommand command = new SqlCommand(commandString, connection)
+            {
+                CommandTimeout = timeout
+            };
+            using (command)
             {
                 return await this.ExecuteQuery(parameters, command, connection);
             }
@@ -84,7 +94,7 @@ public class EdgeCompiler
                 record.GetValues(resultRecord);
 
                 for (int i = 0; i < record.FieldCount; i++)
-                {      
+                {
                     Type type = record.GetFieldType(i);
                     if (resultRecord[i] is System.DBNull)
                     {
@@ -113,11 +123,15 @@ public class EdgeCompiler
         }
     }
 
-    async Task<object> ExecuteNonQuery(string connectionString, string commandString, IDictionary<string, object> parameters)
+    async Task<object> ExecuteNonQuery(string connectionString, string commandString, int timeout, IDictionary<string, object> parameters)
     {
         using (var connection = new SqlConnection(connectionString))
         {
-            using (var command = new SqlCommand(commandString, connection))
+            SqlCommand command = new SqlCommand(commandString, connection)
+            {
+                CommandTimeout = timeout
+            };
+            using (command)
             {
                 this.AddParamaters(command, parameters);
                 await connection.OpenAsync();
@@ -129,13 +143,15 @@ public class EdgeCompiler
     async Task<object> ExecuteStoredProcedure(
         string connectionString,
         string commandString,
+        int timeout,
         IDictionary<string, object> parameters)
     {
         using (SqlConnection connection = new SqlConnection(connectionString))
         {
             SqlCommand command = new SqlCommand(commandString.Substring(5).TrimEnd(), connection)
             {
-                CommandType = CommandType.StoredProcedure
+                CommandType = CommandType.StoredProcedure,
+                CommandTimeout = timeout
             };
             using (command)
             {

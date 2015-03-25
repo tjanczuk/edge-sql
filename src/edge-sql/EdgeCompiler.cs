@@ -24,15 +24,6 @@ public class EdgeCompiler
                 return await this.ExecuteQuery(connectionString, command, (IDictionary<string, object>)queryParameters);
             };
         }
-        else if (command.StartsWith("insert ", StringComparison.InvariantCultureIgnoreCase)
-            || command.StartsWith("update ", StringComparison.InvariantCultureIgnoreCase)
-            || command.StartsWith("delete ", StringComparison.InvariantCultureIgnoreCase))
-        {
-            return async (queryParameters) =>
-            {
-                return await this.ExecuteNonQuery(connectionString, command, (IDictionary<string, object>)queryParameters);
-            };
-        }
         else if (command.StartsWith("exec ", StringComparison.InvariantCultureIgnoreCase))
         {
             return async (queryParameters) => await
@@ -43,7 +34,10 @@ public class EdgeCompiler
         }
         else
         {
-            throw new InvalidOperationException("Unsupported type of SQL command. Only select, insert, update, delete, and exec are supported.");
+            return async (queryParameters) =>
+            {
+                return await this.ExecuteNonQuery(connectionString, command, (IDictionary<string, object>)queryParameters);
+            };
         }
     }
 

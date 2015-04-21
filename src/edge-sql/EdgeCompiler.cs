@@ -33,17 +33,17 @@ public class EdgeCompiler
                 return await this.ExecuteNonQuery(connectionString, command, (IDictionary<string, object>)queryParameters);
             };
         }
-        else if (command.StartsWith("exec ", StringComparison.InvariantCultureIgnoreCase))
+        else if (command.StartsWith("exec ", StringComparison.InvariantCultureIgnoreCase)
+                || command.StartsWith("execute ", StringComparison.InvariantCultureIgnoreCase))
         {
-            return async (queryParameters) => await
-                this.ExecuteStoredProcedure(
-                    connectionString,
-                    command,
-                    (IDictionary<string, object>)queryParameters);
+            return async (queryParameters) =>
+            {
+                return await this.ExecuteStoredProcedure(connectionString, command, (IDictionary<string, object>)queryParameters);
+            };
         }
         else
         {
-            throw new InvalidOperationException("Unsupported type of SQL command. Only select, insert, update, delete, and exec are supported.");
+            throw new InvalidOperationException("Unsupported type of SQL command. Only select, insert, update, delete, and exec / execute are supported.");
         }
     }
 
@@ -53,7 +53,16 @@ public class EdgeCompiler
         {
             foreach (KeyValuePair<string, object> parameter in parameters)
             {
-                command.Parameters.AddWithValue(parameter.Key, parameter.Value ?? DBNull.Value);
+                if (parameter.Key == "returnParameter")
+                {
+                    String returnParameterName = "@" + parameter.Value.ToString();
+                    command.Parameters.Add(returnParameterName, SqlDbType.NVarChar, -1);
+                    command.Parameters[returnParameterName].Direction = ParameterDirection.Output;
+                }
+                else
+                {
+                    command.Parameters.AddWithValue(parameter.Key, parameter.Value ?? DBNull.Value);
+                }
             }
         }
     }
@@ -84,7 +93,7 @@ public class EdgeCompiler
                 record.GetValues(resultRecord);
 
                 for (int i = 0; i < record.FieldCount; i++)
-                {      
+                {
                     Type type = record.GetFieldType(i);
                     if (resultRecord[i] is System.DBNull)
                     {
@@ -133,12 +142,34 @@ public class EdgeCompiler
     {
         using (SqlConnection connection = new SqlConnection(connectionString))
         {
-            SqlCommand command = new SqlCommand(commandString.Substring(5).TrimEnd(), connection)
+            commandString = commandString.Substring(commandString.IndexOf(' ') + 1, (commandString.Length - 1) - commandString.IndexOf(' '));
+            commandString = commandString.TrimStart();
+            if (commandString.Contains("@"))
+            {
+                commandString = commandString.Substring(0, commandString.IndexOf('@') - 1);
+            }
+            commandString = commandString.Trim();
+            SqlCommand command = new SqlCommand(commandString, connection)
             {
                 CommandType = CommandType.StoredProcedure
             };
             using (command)
             {
+                if (parameters != null)
+                {
+                    this.AddParamaters(command, parameters);
+
+                    object tmp;
+                    if (parameters.TryGetValue("returnParameter", out tmp))
+                    {
+                        string returnValue = "1";
+                        await connection.OpenAsync();
+                        await command.ExecuteNonQueryAsync();
+                        String returnKey = "@" + (string)tmp;
+                        returnValue = command.Parameters[returnKey].Value.ToString();
+                        return returnValue;
+                    }
+                }
                 return await this.ExecuteQuery(parameters, command, connection);
             }
         }

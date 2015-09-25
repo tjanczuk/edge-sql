@@ -43,7 +43,10 @@ public class EdgeCompiler
         if (parameters.TryGetValue("handler", out tmp)) {
             handler = (int)tmp;
         }
-
+        int timeOut = 30;
+        if (parameters.TryGetValue("timeout", out tmp)){
+            timeOut = (int)tmp;
+        }
 
         tmp = null;
         if (parameters.TryGetValue("cmd", out tmp)) {
@@ -56,10 +59,10 @@ public class EdgeCompiler
             }
             if (cmd == "nonquery") {
                 if (handler >= 0) {
-                    return async (o) => { return await ExecuteNonQueryConn(handler, command); };
+                    return async (o) => { return await ExecuteNonQueryConn(handler, command, timeOut); };
                 }
                 else {
-                    return async (o) => { return await ExecuteNonQuery(connectionString, command); };
+                    return async (o) => { return await ExecuteNonQuery(connectionString, command, timeOut); };
                 }
             }
         }
@@ -75,13 +78,13 @@ public class EdgeCompiler
             packetSize = Convert.ToInt32(defPSize);
         }
         if (handler != -1) {
-            return async (o) => { return await ExecuteQueryConn(handler, command, packetSize, callback); };
+            return async (o) => { return await ExecuteQueryConn(handler, command, packetSize, timeOut, callback); };
         }
 
         return async (queryParameters) =>
         {
             return await this.ExecuteQuery(connectionString, command, (IDictionary<string, object>)queryParameters,
-                packetSize,callback);
+                packetSize, timeOut, callback);
         };
     }
 
@@ -91,7 +94,7 @@ public class EdgeCompiler
         {
             foreach (KeyValuePair<string, object> parameter in parameters)
             {
-                command.Parameters.AddWithValue(parameter.Key, parameter.Value);
+                command.Parameters.AddWithValue(parameter.Key, parameter.Value ?? DBNull.Value);
             }
         }
     }
@@ -110,14 +113,15 @@ public class EdgeCompiler
     
     
      async Task<object> ExecuteQuery(string connectionString, string commandString, IDictionary<string, object> parameters,
-        int packetSize, Func<object, Task<object>> callback = null)
+        int packetSize, int timeout, Func<object, Task<object>> callback = null)
     {
         List<object> rows = new List<object>();
-
-        using (SqlConnection connection = new SqlConnection(connectionString))
-        {
-            using (SqlCommand command = new SqlCommand(commandString, connection))
-            {
+       
+        using (SqlConnection connection = new SqlConnection(connectionString)) {
+            SqlCommand command = new SqlCommand(commandString, connection);
+            command.CommandTimeout = timeout;
+            
+            using (command) {
                 this.AddParamaters(command, parameters);
                 await connection.OpenAsync();
                 using (SqlDataReader reader = await command.ExecuteReaderAsync(CommandBehavior.CloseConnection)) {
@@ -193,7 +197,7 @@ public class EdgeCompiler
  
 
     async Task<object> ExecuteQueryConn(int handler, string commandString, 
-        int packetSize, Func<object, Task<object>> callback = null) {
+        int packetSize, int timeout, Func<object, Task<object>> callback = null) {
         List<object> rows = new List<object>();
         SqlConnection connection = allConn[handler];        
         using (SqlCommand command = new SqlCommand(commandString, connection)) {
@@ -266,9 +270,11 @@ public class EdgeCompiler
         return rows;
     }
 
-    private async Task<object> ExecuteNonQueryConn(int handler, string commandString) {
-         SqlConnection connection = allConn[handler];     
-            using (var command = new SqlCommand(commandString, connection)) {
+    private async Task<object> ExecuteNonQueryConn(int handler, string commandString, int timeOut) {
+         SqlConnection connection = allConn[handler];
+        SqlCommand command = new SqlCommand(commandString, connection);
+        command.CommandTimeout = timeOut;
+        using (command) {
                 var res = new Dictionary<string, object>();
                 res["rowcount"]= await command.ExecuteNonQueryAsync();
                 return res;
@@ -276,10 +282,12 @@ public class EdgeCompiler
         
     }
 
-    private async Task<object> ExecuteNonQuery(string connectionString, string commandString 
+    private async Task<object> ExecuteNonQuery(string connectionString, string commandString , int timeOut
                 /*IDictionary<string, object> parameters*/) {
         using (var connection = new SqlConnection(connectionString)) {
-            using (var command = new SqlCommand(commandString, connection)) {
+            SqlCommand command = new SqlCommand(commandString, connection);
+            command.CommandTimeout = timeOut;
+            using (command) {
                 //this.AddParamaters(command, parameters);
                 await connection.OpenAsync();
                 var res = new Dictionary<string, object>();

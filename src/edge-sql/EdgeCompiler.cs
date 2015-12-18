@@ -1,9 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Dynamic;
 using System.Threading.Tasks;
 using System.Data;
 using System.Data.SqlClient;
+using System.Diagnostics;
 
 public class EdgeCompiler
 {
@@ -74,17 +75,17 @@ public class EdgeCompiler
         List<object> rows = new List<object>();
         this.AddParamaters(command, parameters);
         await connection.OpenAsync();
-        using (SqlDataReader reader = await command.ExecuteReaderAsync(CommandBehavior.CloseConnection))
+        using (SqlDataReader reader = command.ExecuteReader(CommandBehavior.CloseConnection))
         {
             IDataRecord record = (IDataRecord)reader;
-            while (await reader.ReadAsync())
+            while (reader.Read())
             {
                 var dataObject = new ExpandoObject() as IDictionary<string, Object>;
                 var resultRecord = new object[record.FieldCount];
                 record.GetValues(resultRecord);
 
                 for (int i = 0; i < record.FieldCount; i++)
-                {      
+                {
                     Type type = record.GetFieldType(i);
                     if (resultRecord[i] is System.DBNull)
                     {
@@ -107,6 +108,7 @@ public class EdgeCompiler
                 }
 
                 rows.Add(dataObject);
+
             }
 
             return rows;
@@ -131,14 +133,17 @@ public class EdgeCompiler
         string commandString,
         IDictionary<string, object> parameters)
     {
+        Console.WriteLine("Attempting to connect with string " + connectionString);
         using (SqlConnection connection = new SqlConnection(connectionString))
         {
+            Console.WriteLine("Connection success");
             SqlCommand command = new SqlCommand(commandString.Substring(5).TrimEnd(), connection)
             {
                 CommandType = CommandType.StoredProcedure
             };
             using (command)
             {
+                Console.WriteLine("Executing query");
                 return await this.ExecuteQuery(parameters, command, connection);
             }
         }

@@ -133,17 +133,14 @@ public class EdgeCompiler
         string commandString,
         IDictionary<string, object> parameters)
     {
-        Console.WriteLine("Attempting to connect with string " + connectionString);
         using (SqlConnection connection = new SqlConnection(connectionString))
         {
-            Console.WriteLine("Connection success");
             SqlCommand command = new SqlCommand(commandString.Substring(5).TrimEnd(), connection)
             {
                 CommandType = CommandType.StoredProcedure
             };
             using (command)
             {
-                Console.WriteLine("Executing query");
                 return await this.ExecuteQuery(parameters, command, connection);
             }
         }

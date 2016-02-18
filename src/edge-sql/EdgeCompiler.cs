@@ -4,7 +4,6 @@ using System.Dynamic;
 using System.Threading.Tasks;
 using System.Data;
 using System.Data.SqlClient;
-using System.Diagnostics;
 
 public class EdgeCompiler
 {
@@ -75,10 +74,13 @@ public class EdgeCompiler
         List<object> rows = new List<object>();
         this.AddParamaters(command, parameters);
         await connection.OpenAsync();
-        using (SqlDataReader reader = command.ExecuteReader(CommandBehavior.CloseConnection))
+
+        IAsyncResult result = command.BeginExecuteReader();
+
+        using (SqlDataReader reader = command.EndExecuteReader(result))
         {
             IDataRecord record = (IDataRecord)reader;
-            while (reader.Read())
+            while (await reader.ReadAsync())
             {
                 var dataObject = new ExpandoObject() as IDictionary<string, Object>;
                 var resultRecord = new object[record.FieldCount];
@@ -108,7 +110,6 @@ public class EdgeCompiler
                 }
 
                 rows.Add(dataObject);
-
             }
 
             return rows;

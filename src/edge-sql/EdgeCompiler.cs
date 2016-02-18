@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Dynamic;
 using System.Threading.Tasks;
@@ -74,7 +74,10 @@ public class EdgeCompiler
         List<object> rows = new List<object>();
         this.AddParamaters(command, parameters);
         await connection.OpenAsync();
-        using (SqlDataReader reader = await command.ExecuteReaderAsync(CommandBehavior.CloseConnection))
+
+        IAsyncResult result = command.BeginExecuteReader();
+
+        using (SqlDataReader reader = command.EndExecuteReader(result))
         {
             IDataRecord record = (IDataRecord)reader;
             while (await reader.ReadAsync())
@@ -84,7 +87,7 @@ public class EdgeCompiler
                 record.GetValues(resultRecord);
 
                 for (int i = 0; i < record.FieldCount; i++)
-                {      
+                {
                     Type type = record.GetFieldType(i);
                     if (resultRecord[i] is System.DBNull)
                     {

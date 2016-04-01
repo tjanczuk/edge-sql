@@ -48,11 +48,17 @@ public class EdgeCompiler
             timeOut = (int)tmp;
         }
 
+        Func<object, Task<object>> callback = null;
+        tmp = null;
+        if (parameters.TryGetValue("callback", out tmp)) {
+            callback = (Func<object, Task<object>>)tmp;
+        }
+
         tmp = null;
         if (parameters.TryGetValue("cmd", out tmp)) {
             var cmd = ((string)tmp).ToLower().Trim();
             if (cmd == "open") {
-                return async (o) => { return await OpenConnection(connectionString); };
+                    return async (o) => { return await OpenConnection(connectionString); };
             }
             if (cmd == "close") {
                 return async (o) => { CloseConnection(handler); return 0; };
@@ -67,11 +73,6 @@ public class EdgeCompiler
             }
         }
      
-        Func<object, Task<object>> callback = null;
-        tmp = null;
-        if (parameters.TryGetValue("callback", out tmp)) {
-            callback = (Func<object, Task<object>>)tmp;
-        }
         int packetSize=0;
         object defPSize = 0;
         if (parameters.TryGetValue("packetSize", out defPSize)) {
@@ -99,9 +100,16 @@ public class EdgeCompiler
         }
     }
 
-  async Task<object> OpenConnection(string connectionString) {
+    async Task<object> OpenConnection(string connectionString) {
         SqlConnection connection = new SqlConnection(connectionString);
-        await connection.OpenAsync();
+        try {
+            Task t = connection.OpenAsync();
+            Task.WaitAll(t);
+            if (t.IsFaulted) throw new Exception();
+        }
+        catch {
+            throw new Exception("Error opening connection");
+        }
         return AddConnection(connection);
     }
 
@@ -116,7 +124,7 @@ public class EdgeCompiler
         int packetSize, int timeout, Func<object, Task<object>> callback = null)
     {
         List<object> rows = new List<object>();
-       
+        
         using (SqlConnection connection = new SqlConnection(connectionString)) {
             SqlCommand command = new SqlCommand(commandString, connection);
             command.CommandTimeout = timeout;

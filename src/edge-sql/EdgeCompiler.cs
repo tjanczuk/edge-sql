@@ -53,9 +53,9 @@ public class sqlServerConn : genericConnection {
         }
     }
 
-    public override Task<object> executeQueryConn(string commandString,
+    public override  Task<object> executeQueryConn(string commandString,
         int packetSize, int timeout, Func<object, Task<object>> callback = null) {
-        return internalExecuteQuery(connection, commandString, packetSize, timeout, callback);
+        return Task.FromResult(internalExecuteQuery(connection, commandString, packetSize, timeout, callback));
     }
 
     public override async Task<object> executeNonQuery(string commandString, int timeOut) {
@@ -79,11 +79,11 @@ public class sqlServerConn : genericConnection {
         }
     }
 
-    private async Task<object> internalExecuteQuery(SqlConnection connection, string commandString,
+    private object internalExecuteQuery(SqlConnection connection, string commandString,
         int packetSize, int timeout, Func<object, Task<object>> callback = null) {
         List<object> rows = new List<object>();
         using (SqlCommand command = new SqlCommand(commandString, connection)) {
-            using (SqlDataReader reader = await command.ExecuteReaderAsync(CommandBehavior.Default)) {
+            using (SqlDataReader reader =  command.ExecuteReader(CommandBehavior.Default)) {
                 do {
                     Dictionary<string, object> res;
                     object[] fieldNames = new object[reader.FieldCount];
@@ -101,7 +101,7 @@ public class sqlServerConn : genericConnection {
 
                     res["rows"] = localRows;
                     IDataRecord record = (IDataRecord) reader;
-                    while (await reader.ReadAsync()) {
+                    while ( reader.Read()) {
                         object[] resultRecord = new object[record.FieldCount];
                         record.GetValues(resultRecord);
                         for (int i = 0; i < record.FieldCount; i++) {
@@ -143,7 +143,7 @@ public class sqlServerConn : genericConnection {
                     else {
                         rows.Add(res);
                     }
-                } while (await reader.NextResultAsync());
+                } while (reader.NextResult());
 
             }
         }
@@ -155,12 +155,12 @@ public class sqlServerConn : genericConnection {
         return rows;
     }
 
-    private async Task<object> internalExecuteNonQuery(SqlConnection connection, string commandString, int timeOut) {
+    private object internalExecuteNonQuery(SqlConnection connection, string commandString, int timeOut) {
         SqlCommand command = new SqlCommand(commandString, connection);
         command.CommandTimeout = timeOut;
         using (command) {
             //this.AddParameters(command, parameters);
-            var res = new Dictionary<string, object> {["rowcount"] = await command.ExecuteNonQueryAsync()};
+            var res = new Dictionary<string, object> {["rowcount"] =  command.ExecuteNonQueryAsync()};
             return res;
         }
     }
@@ -301,12 +301,12 @@ public class mySqlConn : genericConnection {
         return rows; 
     }
 
-    private async Task<object> internalExecuteNonQuery(MySqlConnection connection, string commandString, int timeOut) {
+    private object internalExecuteNonQuery(MySqlConnection connection, string commandString, int timeOut) {
         MySqlCommand command = new MySqlCommand(commandString, connection);
         command.CommandTimeout = timeOut;
         using (command) {
             //this.AddParameters(command, parameters);
-            var res = new Dictionary<string, object> {["rowcount"] = await command.ExecuteNonQueryAsync() };
+            var res = new Dictionary<string, object> {["rowcount"] =  command.ExecuteNonQueryAsync() };
             return res;
         }
     }

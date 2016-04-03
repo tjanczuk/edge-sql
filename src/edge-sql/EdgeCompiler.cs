@@ -190,24 +190,24 @@ public class mySqlConn : genericConnection {
 
         using (MySqlConnection tempConn = new MySqlConnection(connectionString)) {
             await tempConn.OpenAsync();
-            return await internalExecuteQuery(tempConn, commandString, packetSize, timeout, callback);
+            return  internalExecuteQuery(tempConn, commandString, packetSize, timeout, callback);
         }
     }
 
     public override async Task<object> executeQueryConn(string commandString,
         int packetSize, int timeout, Func<object, Task<object>> callback = null) {
-        return await internalExecuteQuery(connection, commandString, packetSize, timeout, callback);
+        return internalExecuteQuery(connection, commandString, packetSize, timeout, callback);
     }
 
     public override async Task<object> executeNonQuery(string commandString, int timeOut) {
         using (MySqlConnection tempConn = new MySqlConnection(connectionString)) {
             await tempConn.OpenAsync();
-            return await internalExecuteNonQuery(tempConn, commandString, timeOut);
+            return  internalExecuteNonQuery(tempConn, commandString, timeOut);
         }
     }
 
     public override async Task<object> executeNonQueryConn(string commandString, int timeOut) {
-        return await internalExecuteNonQuery(connection, commandString, timeOut);
+        return  internalExecuteNonQuery(connection, commandString, timeOut);
 
     }
 

@@ -194,7 +194,7 @@ public class mySqlConn : genericConnection {
         }
     }
 
-    public override async Task<object> executeQueryConn(string commandString,
+    public override  Task<object> executeQueryConn(string commandString,
         int packetSize, int timeout, Func<object, Task<object>> callback = null) {
         return internalExecuteQuery(connection, commandString, packetSize, timeout, callback);
     }

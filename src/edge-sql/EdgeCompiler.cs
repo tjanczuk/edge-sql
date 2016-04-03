@@ -147,7 +147,11 @@ public class sqlServerConn : genericConnection {
 
             }
         }
-
+        if (callback != null) {
+            var res = new Dictionary<string, object>();
+            res["resolve"] = 1;
+            callback(res);
+        }
         return rows;
     }
 
@@ -194,10 +198,11 @@ public class mySqlConn : genericConnection {
         }
     }
 
-    public override  Task<object> executeQueryConn(string commandString,
+    public override Task<object> executeQueryConn(string commandString,
         int packetSize, int timeout, Func<object, Task<object>> callback = null) {
-        return internalExecuteQuery(connection, commandString, packetSize, timeout, callback);
+        return Task.FromResult(internalExecuteQuery(connection, commandString, packetSize, timeout, callback));        
     }
+
 
     public override async Task<object> executeNonQuery(string commandString, int timeOut) {
         using (MySqlConnection tempConn = new MySqlConnection(connectionString)) {
@@ -220,11 +225,11 @@ public class mySqlConn : genericConnection {
         }
     }
 
-    private async Task<object> internalExecuteQuery(MySqlConnection connection, string commandString,
+    private object internalExecuteQuery(MySqlConnection connection, string commandString,
         int packetSize, int timeout, Func<object, Task<object>> callback = null) {
         List<object> rows = new List<object>();
         using (MySqlCommand command = new MySqlCommand(commandString, connection)) {
-            using (DbDataReader reader = await command.ExecuteReaderAsync(CommandBehavior.Default)) {
+            using (DbDataReader reader =  command.ExecuteReader(CommandBehavior.Default)) {
                 do {
                     Dictionary<string, object> res;
                     object[] fieldNames = new object[reader.FieldCount];
@@ -236,13 +241,13 @@ public class mySqlConn : genericConnection {
                     List<object> localRows = new List<object>();
                     res["meta"] = fieldNames;
                     if (callback != null) {
-                        callback(res);
+                        callback(res);                        
                         res = new Dictionary<string, object>();
                     }
 
                     res["rows"] = localRows;
                     IDataRecord record = (IDataRecord)reader;
-                    while (await reader.ReadAsync()) {
+                    while (reader.Read()) {
                         object[] resultRecord = new object[record.FieldCount];
                         record.GetValues(resultRecord);
                         for (int i = 0; i < record.FieldCount; i++) {
@@ -284,12 +289,16 @@ public class mySqlConn : genericConnection {
                     else {
                         rows.Add(res);
                     }
-                } while (await reader.NextResultAsync());
+                } while ( reader.NextResult());
 
             }
         }
-
-        return rows;
+        if (callback != null) {
+            var res = new Dictionary<string, object>();
+            res["resolve"] = 1;
+            callback(res);
+        }
+        return rows; 
     }
 
     private async Task<object> internalExecuteNonQuery(MySqlConnection connection, string commandString, int timeOut) {

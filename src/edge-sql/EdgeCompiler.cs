@@ -37,7 +37,6 @@ namespace edge_sql {
 		}
 
 		public override async Task<object> open () {
-			Console.WriteLine ("sqlServer connectionString is " + connectionString);
 			connection = new SqlConnection (connectionString);
 			try {
 				await connection.OpenAsync ();
@@ -175,12 +174,9 @@ namespace edge_sql {
 		}
 
 		public override Task<object> open () {
-			Console.WriteLine ("mySqlConn connectionString is " + connectionString);
 			connection = new MySqlConnection (connectionString);
 			try {
-				Console.WriteLine ("Ci sto provando");
 				connection.Open();
-				Console.WriteLine ("Ci ho provato");
 				return Task.FromResult((Object)true);
 			} catch (Exception E) {
 				throw new Exception ("Error opening connection"+E.ToString());
@@ -213,8 +209,8 @@ namespace edge_sql {
 			}
 		}
 
-		public override async Task<object> executeNonQueryConn (string commandString, int timeOut) {
-			return  internalExecuteNonQuery (connection, commandString, timeOut);
+		public override  Task<object> executeNonQueryConn (string commandString, int timeOut) {
+			return  Task.FromResult(internalExecuteNonQuery (connection, commandString, timeOut));
 
 		}
 
@@ -366,7 +362,6 @@ namespace edge_sql {
 			tmp = null;
 			if (parameters.TryGetValue ("cmd", out tmp)) {
 				var cmd = ((string)tmp).ToLower ().Trim ();
-				Console.WriteLine ("cmd is " + cmd);
 				if (cmd == "open") {
 					return async (o) => {
 						return await openConnection (connectionString, driver);
@@ -414,7 +409,6 @@ namespace edge_sql {
 
 
 		genericConnection dispatchConn (string connectionString, string driver) {
-			Console.WriteLine ("driver is " + driver);
 			if (driver == "sqlServer") {
 				return new sqlServerConn (connectionString);
 			}

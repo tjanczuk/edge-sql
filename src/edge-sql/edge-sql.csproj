@@ -54,9 +54,6 @@
     <Reference Include="MySql.Data.Entity.EF6">
       <HintPath>..\..\lib\MySql.Data.Entity.EF6.dll</HintPath>
     </Reference>
-    <Reference Include="MySql.Fabric.Plugin">
-      <HintPath>..\..\lib\MySql.Fabric.Plugin.dll</HintPath>
-    </Reference>
     <Reference Include="MySql.Web">
       <HintPath>..\..\lib\MySql.Web.dll</HintPath>
     </Reference>

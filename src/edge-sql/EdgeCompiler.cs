@@ -55,24 +55,24 @@ namespace edge_sql {
 
 			using (SqlConnection tempConn = new SqlConnection (connectionString)) {
 				await tempConn.OpenAsync ();
-				return internalExecuteQuery (tempConn, commandString, packetSize, timeout, callback);
+				return await internalExecuteQuery (tempConn, commandString, packetSize, timeout, callback);
 			}
 		}
 
-		public override  Task<object> executeQueryConn (string commandString,
+		public override  async Task<object> executeQueryConn (string commandString,
 		                                                 int packetSize, int timeout, Func<object, Task<object>> callback = null) {
-			return Task.FromResult (internalExecuteQuery (connection, commandString, packetSize, timeout, callback));
+			return await internalExecuteQuery (connection, commandString, packetSize, timeout, callback);
 		}
 
 		public override async Task<object> executeNonQuery (string commandString, int timeOut) {
 			using (SqlConnection tempConn = new SqlConnection (connectionString)) {
 				await tempConn.OpenAsync ();
-				return internalExecuteNonQuery (tempConn, commandString, timeOut);
+				return await internalExecuteNonQuery (tempConn, commandString, timeOut);
 			}
 		}
 
 		public override async Task<object> executeNonQueryConn (string commandString, int timeOut) {
-			return internalExecuteNonQuery (connection, commandString, timeOut);
+			return await internalExecuteNonQuery (connection, commandString, timeOut);
 
 		}
 
@@ -85,11 +85,11 @@ namespace edge_sql {
 			}
 		}
 
-		private object internalExecuteQuery (SqlConnection connection, string commandString,
+		private async Task<object> internalExecuteQuery (SqlConnection connection, string commandString,
 		                                      int packetSize, int timeout, Func<object, Task<object>> callback = null) {
 			List<object> rows = new List<object> ();
 			using (SqlCommand command = new SqlCommand (commandString, connection)) {
-				using (SqlDataReader reader = command.ExecuteReader (CommandBehavior.Default)) {
+				using (var reader = await command.ExecuteReaderAsync (CommandBehavior.Default)) {
 					do {
 						Dictionary<string, object> res;
 						object[] fieldNames = new object[reader.FieldCount];
@@ -101,7 +101,7 @@ namespace edge_sql {
 						List<object> localRows = new List<object> ();
 						res ["meta"] = fieldNames;
 						if (callback != null) {
-							callback (res);
+							await callback (res);
 							res = new Dictionary<string, object> ();
 						}
 
@@ -128,7 +128,7 @@ namespace edge_sql {
 							}
 							localRows.Add (resultRecord);
 							if (packetSize > 0 && localRows.Count == packetSize && callback != null) {
-								callback (res);
+								await callback (res);
 								localRows = new List<object> ();
 								res = new Dictionary<string, object> ();
 								res ["rows"] = localRows;
@@ -137,29 +137,29 @@ namespace edge_sql {
 
 						if (callback != null) {
 							if (localRows.Count > 0) {
-								callback (res);
+								await callback (res);
 							}
 						} else {
 							rows.Add (res);
 						}
-					} while (reader.NextResult ());
+					} while (await reader.NextResultAsync ());
 
 				}
 			}
 			if (callback != null) {
 				var res = new Dictionary<string, object> ();
 				res ["resolve"] = 1;
-				callback (res);
+				await callback (res);
 			}
 			return rows;
 		}
 
-		private object internalExecuteNonQuery (SqlConnection connection, string commandString, int timeOut) {
+		private async Task<object> internalExecuteNonQuery (SqlConnection connection, string commandString, int timeOut) {
 			SqlCommand command = new SqlCommand (commandString, connection);
 			command.CommandTimeout = timeOut;
 			using (command) {
 				//this.AddParameters(command, parameters);
-				var res = new Dictionary<string, object> { ["rowcount" ] =  command.ExecuteNonQueryAsync () };
+				var res = new Dictionary<string, object> { ["rowcount" ] =  await command.ExecuteNonQueryAsync () };
 				return res;
 			}
 		}
@@ -173,13 +173,13 @@ namespace edge_sql {
 			this.connectionString = connectionString;
 		}
 
-		public override Task<object> open () {
+		public async override Task<object> open () {
 			connection = new MySqlConnection (connectionString);
 			try {
-				connection.Open();
-				return Task.FromResult((Object)true);
-			} catch (Exception E) {
-				throw new Exception ("Error opening connection"+E.ToString());
+				await connection.OpenAsync();
+				return true;
+			} catch  {
+				throw new Exception ("Error opening connection");
 			}
 		}
 
@@ -192,25 +192,25 @@ namespace edge_sql {
 
 			using (MySqlConnection tempConn = new MySqlConnection (connectionString)) {
 				await tempConn.OpenAsync ();
-				return  internalExecuteQuery (tempConn, commandString, packetSize, timeout, callback);
+				return  await internalExecuteQuery (tempConn, commandString, packetSize, timeout, callback);
 			}
 		}
 
-		public override Task<object> executeQueryConn (string commandString,
+		public override async Task<object> executeQueryConn (string commandString,
 		                                                int packetSize, int timeout, Func<object, Task<object>> callback = null) {
-			return Task.FromResult (internalExecuteQuery (connection, commandString, packetSize, timeout, callback));        
+			return await internalExecuteQuery (connection, commandString, packetSize, timeout, callback);        
 		}
 
 
 		public override async Task<object> executeNonQuery (string commandString, int timeOut) {
 			using (MySqlConnection tempConn = new MySqlConnection (connectionString)) {
 				await tempConn.OpenAsync ();
-				return  internalExecuteNonQuery (tempConn, commandString, timeOut);
+				return  await internalExecuteNonQuery (tempConn, commandString, timeOut);
 			}
 		}
 
-		public override  Task<object> executeNonQueryConn (string commandString, int timeOut) {
-			return  Task.FromResult(internalExecuteNonQuery (connection, commandString, timeOut));
+		public override  async Task<object> executeNonQueryConn (string commandString, int timeOut) {
+			return  await internalExecuteNonQuery (connection, commandString, timeOut);
 
 		}
 
@@ -223,11 +223,11 @@ namespace edge_sql {
 			}
 		}
 
-		private object internalExecuteQuery (MySqlConnection connection, string commandString,
+		private async Task<object> internalExecuteQuery (MySqlConnection connection, string commandString,
 		                                      int packetSize, int timeout, Func<object, Task<object>> callback = null) {
 			List<object> rows = new List<object> ();
 			using (MySqlCommand command = new MySqlCommand (commandString, connection)) {
-				using (DbDataReader reader = command.ExecuteReader (CommandBehavior.Default)) {
+				using (DbDataReader reader = await command.ExecuteReaderAsync (CommandBehavior.Default)) {
 					do {
 						Dictionary<string, object> res;
 						object[] fieldNames = new object[reader.FieldCount];
@@ -239,7 +239,7 @@ namespace edge_sql {
 						List<object> localRows = new List<object> ();
 						res ["meta"] = fieldNames;
 						if (callback != null) {
-							callback (res);                        
+							await callback (res);                        
 							res = new Dictionary<string, object> ();
 						}
 
@@ -266,7 +266,7 @@ namespace edge_sql {
 							}
 							localRows.Add (resultRecord);
 							if (packetSize > 0 && localRows.Count == packetSize && callback != null) {
-								callback (res);
+								await callback (res);
 								localRows = new List<object> ();
 								res = new Dictionary<string, object> ();
 								res ["rows"] = localRows;
@@ -275,29 +275,29 @@ namespace edge_sql {
 
 						if (callback != null) {
 							if (localRows.Count > 0) {
-								callback (res);
+								await callback (res);
 							}
 						} else {
 							rows.Add (res);
 						}
-					} while (reader.NextResult ());
+					} while (await reader.NextResultAsync ());
 
 				}
 			}
 			if (callback != null) {
 				var res = new Dictionary<string, object> ();
 				res ["resolve"] = 1;
-				callback (res);
+				await callback (res);
 			}
 			return rows; 
 		}
 
-		private object internalExecuteNonQuery (MySqlConnection connection, string commandString, int timeOut) {
+		private async Task<object> internalExecuteNonQuery (MySqlConnection connection, string commandString, int timeOut) {
 			MySqlCommand command = new MySqlCommand (commandString, connection);
 			command.CommandTimeout = timeOut;
 			using (command) {
 				//this.AddParameters(command, parameters);
-				var res = new Dictionary<string, object> { ["rowcount" ] =  command.ExecuteNonQueryAsync () };
+				var res = new Dictionary<string, object> { ["rowcount" ] =  await command.ExecuteNonQueryAsync () };
 				return res;
 			}
 		}

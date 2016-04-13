@@ -1,11 +1,6 @@
 ﻿using System;
-using edge_sql;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
 using System.Data;
-using MySql;
 using MySql.Data.MySqlClient;
 
 namespace test
@@ -13,7 +8,7 @@ namespace test
 	class MainClass
 	{
 		//const string connectionGood = "Server=localhost;Database=test;Port=3306;User ID=user1;Password=user1;Pooling=false";
-		const string connectionGood = "server=127.0.0.1;database=test;Port=3306;uid=user1;pwd=user1;Pooling=false;"+
+		const string connectionGood = "server=127.0.0.1;database=test;Port=3306;uid=nino;pwd=falco;Pooling=false;"+
 			"Connection Timeout=600;Allow User Variables=True;";
 		static bool open_direct(){
 			IDbConnection dbcon;

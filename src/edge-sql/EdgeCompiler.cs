@@ -6,9 +6,156 @@ using System.Data.SqlClient;
 using System.Data.Common;
 using MySql.Data.MySqlClient;
 
-namespace edge_sql {
 
-	public abstract class genericConnection {
+    public class EdgeCompiler {
+        private static Dictionary<int, genericConnection> allConn = new Dictionary<int, genericConnection>();
+        private static int nConn = 0;
+        private static int totConn = 0;
+
+        private static int AddConnection(genericConnection sqlConn) {
+            lock (allConn) {
+                nConn += 1;
+                totConn += 1;
+                allConn[nConn] = sqlConn;
+                return nConn;
+            }
+        }
+
+        private static void RemoveConnection(int handler) {
+            lock (allConn) {
+                allConn[handler] = null;
+                totConn -= 1;
+                if (totConn == 0) {
+                    nConn = 0;
+                    allConn.Clear();
+                }
+            }
+        }
+
+        public Func<object, Task<object>> CompileFunc(IDictionary<string, object> parameters) {
+            string connectionString = Environment.GetEnvironmentVariable("EDGE_SQL_CONNECTION_STRING");
+            object tmp;
+            if (parameters.TryGetValue("connectionString", out tmp)) {
+                connectionString = (string)tmp;
+            }
+            int handler = -1;
+            if (parameters.TryGetValue("handler", out tmp)) {
+                handler = (int)tmp;
+            }
+            int timeOut = 30;
+            if (parameters.TryGetValue("timeout", out tmp)) {
+                timeOut = (int)tmp;
+            }
+
+            Func<object, Task<object>> callback = null;
+            tmp = null;
+            if (parameters.TryGetValue("callback", out tmp)) {
+                callback = (Func<object, Task<object>>)tmp;
+            }
+            string driver = "sqlServer";
+            tmp = null;
+            if (parameters.TryGetValue("driver", out tmp)) {
+                driver = (string)tmp;
+            }
+
+            string command = "";
+            if (parameters.TryGetValue("source", out tmp)) {
+                command = tmp.ToString().TrimStart();
+            }
+
+            tmp = null;
+            if (parameters.TryGetValue("cmd", out tmp)) {
+                var cmd = ((string)tmp).ToLower().Trim();
+                if (cmd == "open") {
+                    return async (o) => {
+                        return await openConnection(connectionString, driver);
+                    };
+                }
+                if (cmd == "close") {
+                    closeConnection(handler);
+                    return (o) => {
+                        return Task.FromResult((object)null);
+                    };
+                }
+                if (cmd == "nonquery") {
+                    if (handler >= 0) {
+                        genericConnection conn = allConn[handler];
+                        return async (o) => {
+                            return await conn.executeNonQueryConn(command, timeOut);
+                        };
+                    }
+                    else {
+                        genericConnection conn = dispatchConn(connectionString, driver);
+                        return async (o) => {
+                            return await conn.executeNonQuery(command, timeOut);
+                        };
+                    }
+                }
+            }
+
+            int packetSize = 0;
+            object defPSize = 0;
+            if (parameters.TryGetValue("packetSize", out defPSize)) {
+                packetSize = Convert.ToInt32(defPSize);
+            }
+            if (handler != -1) {
+                genericConnection conn = allConn[handler];
+                return async (o) => {
+                    return await conn.executeQueryConn(command, packetSize, timeOut, callback);
+                };
+            }
+
+            return async (queryParameters) => {
+                genericConnection conn = dispatchConn(connectionString, driver);
+                return await conn.executeQuery(command, (IDictionary<string, object>)queryParameters,
+                                                       packetSize, timeOut, callback);
+            };
+        }
+
+
+        genericConnection dispatchConn(string connectionString, string driver) {
+            if (driver == "sqlServer") {
+                return new sqlServerConn(connectionString);
+            }
+            if (driver == "mySql") {
+                return new mySqlConn(connectionString);
+            }
+            return null;
+        }
+
+        async Task<object> openConnection(string connectionString, string driver) {
+            genericConnection gen = dispatchConn(connectionString, driver);
+
+            try {
+                await gen.open();
+                return AddConnection(gen);
+            }
+            catch {
+                throw new Exception("Error opening connection");
+            }
+
+
+
+
+        }
+
+        void closeConnection(int handler) {
+            allConn[handler].close();
+            RemoveConnection(handler);
+        }
+
+
+
+
+
+
+
+
+
+
+
+    }
+    public abstract class genericConnection {
 		public abstract  Task<object> executeQuery (string commandString, IDictionary<string, object> parameters,
 		                                             int packetSize, int timeout, Func<object, Task<object>> callback = null);
 
@@ -98,7 +245,7 @@ namespace edge_sql {
 						List<object> localRows = new List<object> ();
 						res ["meta"] = fieldNames;
 						if (callback != null) {
-							await callback (res);
+							callback (res);
 							res = new Dictionary<string, object> ();
 						}
 
@@ -125,7 +272,7 @@ namespace edge_sql {
 							}
 							localRows.Add (resultRecord);
 							if (packetSize > 0 && localRows.Count == packetSize && callback != null) {
-								await callback (res);
+								callback (res);
 								localRows = new List<object> ();
 								res = new Dictionary<string, object> ();
 								res ["rows"] = localRows;
@@ -134,7 +281,7 @@ namespace edge_sql {
 
 						if (callback != null) {
 							if (localRows.Count > 0) {
-								await callback (res);
+								callback (res);
 							}
 						} else {
 							rows.Add (res);
@@ -146,7 +293,7 @@ namespace edge_sql {
 			if (callback != null) {
 				var res = new Dictionary<string, object> ();
 				res ["resolve"] = 1;
-				await callback (res);
+				callback (res);
 			}
 			return rows;
 		}
@@ -236,7 +383,7 @@ namespace edge_sql {
 						List<object> localRows = new List<object> ();
 						res ["meta"] = fieldNames;
 						if (callback != null) {
-							await callback (res);                        
+							callback (res);                        
 							res = new Dictionary<string, object> ();
 						}
 
@@ -263,7 +410,7 @@ namespace edge_sql {
 							}
 							localRows.Add (resultRecord);
 							if (packetSize > 0 && localRows.Count == packetSize && callback != null) {
-								await callback (res);
+								callback (res);
 								localRows = new List<object> ();
 								res = new Dictionary<string, object> ();
 								res ["rows"] = localRows;
@@ -272,7 +419,7 @@ namespace edge_sql {
 
 						if (callback != null) {
 							if (localRows.Count > 0) {
-								await callback (res);
+								callback (res);
 							}
 						} else {
 							rows.Add (res);
@@ -284,7 +431,7 @@ namespace edge_sql {
 			if (callback != null) {
 				var res = new Dictionary<string, object> ();
 				res ["resolve"] = 1;
-				await callback (res);
+				callback (res);
 			}
 			return rows; 
 		}
@@ -300,151 +447,5 @@ namespace edge_sql {
 		}
 	}
 
-	public class EdgeCompiler {
-		private static Dictionary<int, genericConnection> allConn = new Dictionary<int, genericConnection> ();
-		private static int nConn = 0;
-		private static int totConn = 0;
+	
 
-		private static int AddConnection (genericConnection sqlConn) {
-			lock (allConn) {
-				nConn += 1;
-				totConn += 1;
-				allConn [nConn] = sqlConn;
-				return nConn;
-			}
-		}
-
-		private static void RemoveConnection (int handler) {
-			lock (allConn) {
-				allConn [handler] = null;
-				totConn -= 1;
-				if (totConn == 0) {
-					nConn = 0;
-					allConn.Clear ();                
-				}
-			}
-		}
-
-		public Func<object, Task<object>> CompileFunc (IDictionary<string, object> parameters) {
-			string connectionString = Environment.GetEnvironmentVariable ("EDGE_SQL_CONNECTION_STRING");
-			object tmp;
-			if (parameters.TryGetValue ("connectionString", out tmp)) {
-				connectionString = (string)tmp;
-			}
-			int handler = -1;
-			if (parameters.TryGetValue ("handler", out tmp)) {
-				handler = (int)tmp;
-			}
-			int timeOut = 30;
-			if (parameters.TryGetValue ("timeout", out tmp)) {
-				timeOut = (int)tmp;
-			}
-
-			Func<object, Task<object>> callback = null;
-			tmp = null;
-			if (parameters.TryGetValue ("callback", out tmp)) {
-				callback = (Func<object, Task<object>>)tmp;
-			}
-			string driver = "sqlServer";
-			tmp = null;
-			if (parameters.TryGetValue ("driver", out tmp)) {
-				driver = (string)tmp;
-			}
-
-			string command = "";
-			if (parameters.TryGetValue ("source", out tmp)) {
-				command = tmp.ToString ().TrimStart ();
-			}
-
-			tmp = null;
-			if (parameters.TryGetValue ("cmd", out tmp)) {
-				var cmd = ((string)tmp).ToLower ().Trim ();
-				if (cmd == "open") {
-					return async (o) => {
-						return await openConnection (connectionString, driver);
-					};
-				}
-				if (cmd == "close") {
-					closeConnection (handler);
-					return  (o) => {
-						return  null;
-					};
-				}
-				if (cmd == "nonquery") {			
-					if (handler >= 0) {
-						genericConnection conn = allConn [handler];
-						return async (o) => {
-							return await conn.executeNonQueryConn (command, timeOut);
-						};
-					} else {
-						genericConnection conn = dispatchConn (connectionString, driver);
-						return async (o) => {
-							return await conn.executeNonQuery (command, timeOut);
-						};
-					}
-				}
-			}
-     
-			int packetSize = 0;
-			object defPSize = 0;
-			if (parameters.TryGetValue ("packetSize", out defPSize)) {
-				packetSize = Convert.ToInt32 (defPSize);
-			}
-			if (handler != -1) {
-				genericConnection conn = allConn [handler];
-				return async (o) => {
-					return await conn.executeQueryConn (command, packetSize, timeOut, callback);
-				};
-			}
-
-			return async (queryParameters) => {
-				genericConnection conn = dispatchConn (connectionString, driver);            
-				return await conn.executeQuery (command, (IDictionary<string, object>)queryParameters,
-				                                       packetSize, timeOut, callback);
-			};
-		}
-
-
-		genericConnection dispatchConn (string connectionString, string driver) {
-			if (driver == "sqlServer") {
-				return new sqlServerConn (connectionString);
-			}
-			if (driver == "mySql") {
-				return new mySqlConn (connectionString);
-			}
-			return null;
-		}
-
-		async Task<object> openConnection (string connectionString, string driver) {
-			genericConnection gen = dispatchConn (connectionString, driver);        
-
-			try {
-				await gen.open ();
-				return AddConnection (gen);
-			} catch {
-				throw new Exception ("Error opening connection");
-			}
-       
-
-
-
-		}
-
-		void closeConnection (int handler) {
-			allConn [handler].close ();        
-			RemoveConnection (handler);   
-		}
-    
-    
-   
-
- 
-
-   
-
-
-
-
-	}
-
-}

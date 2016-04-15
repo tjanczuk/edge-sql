@@ -2,28 +2,31 @@ edge-sql-maxpower
 =======
 
 This is a SQL compiler for edge.js branched from [edge-sql](https://github.com/tjanczuk/edge-sql "edge-sql"). It allows accessing databases from Node.js using [Edge.js](https://github.com/tjanczuk/edge "Edge.js") through ADO.NET 
+At the moment two kinds of databases are supported: mySql and 
 
 This contains some major improvements  as:
 #### 
+* support for **multiple result set**: they are returned as [ {meta:[column names], rows:[[..]]}, {meta:[column names], rows:[[..]]}, ....} 
 * support for DateTime values
-* support for **transaction** having the ability to open and close a connection keeping it open in the while
+* support for **transactions** having the ability to open and close a connection keeping it open in the while
 * support for null values 
-* **packet-ized** output option ouput is in the form {meta:[column names], rows:[[array of values]]} when packet size=0, otherwise meta and rows are given separately, with packets of max 'packet size' rows of data 
+* **callback** option. When a callback is not specified, output is in the form {meta:[column names], rows:[[array of values]]}. When a callback is specified meta and rows are given separately, with packets of max 'packetsize' rows of data. If packetsize is not specified, each resultset will be returned with a call to the callback function 
 * support for Decimal values
-* support for **any kind of command** (as Ryan says 'just do it'), via a cmd parameter. If it is 'nonquery', a (.net) *ExecuteNonQuery* is runned, otherwise a (.net) *ExecuteReaderAsync* 
-* support for **multiple result set**: they are returned as [ {meta:[column names], rows:[[..]]}, {meta:[column names], rows:[[..]]}, ....}
+* support for **any kind of command**, via a cmd parameter. If it is 'nonquery', a (.net) *ExecuteNonQuery* is runned, otherwise a (.net) *ExecuteReaderAsync* 
 * support for smallint (Int16) values
 * it is possible to give **connectionString** as parameter
-* it is possible to give a **connection handler** as parameter 
-* additional commands provided through cmd parameter are:  open, close, nonquery. "nonquery" commands are useful for updating db, where the sql **result is the number of rows affected**. This value is returned in "**rowcount**" output field.
+* it is possible to give a **connection handler** as parameter. The connection handler can be obtained via an open(connectionString) command and used in subsequent operations.  
+* additional commands provided through cmd parameter are:  open, close, nonquery. "nonquery" commands are useful for updating db, where the **result is the number of rows affected**. This value is returned in "**rowcount**" output field.
 
 **
 ####
 
 For any other information: read the code :)
 
-In all the examples, a JQuery Deferred is used.
-
+**In all the examples, a [JQuery Deferred](https://github.com/jaubourg/jquery-deferred-for-node) is used.**
+    
+    var Deferred = require("JQDeferred");
+    
 # How to #
 ## open a connection ##
    
@@ -43,7 +46,7 @@ In all the examples, a JQuery Deferred is used.
     		}
     		if (result) {      		
 				//result is a handler to a sql connection	
-      			def.resolve(that);  
+      			def.resolve(result);  
       			return;
     		}
     		def.reject('shouldnt reach here');
@@ -69,45 +72,31 @@ In all the examples, a JQuery Deferred is used.
       	});
       return def.promise();
     };
-    
-## Execute a generic sql command ##
+
+## Execute a simple sql command (one resultset) ##
 
     /**
-     * Executes a sql command and returns all sets of results. Each Results is given via a notify or resolve
-     * @method queryBatch
+     * Executes a sql command and returns a Deferred that will be resolved with the resultset.
+     * @method simpleQuery
      * @param {string} query
-     * @param {boolean} [raw] if true, data are left in raw state and will be objectified by the client
-     * @param handler handler for the connection or connection string
-     * @returns {*}  a sequence of {[array of plain objects]} or {meta:[column names],rows:[arrays of raw data]}
+     * @param {string} connectionString
+     * @returns  {[array of plain objects]} 
      */
-    function queryBatch(query, raw, handler) {
-      var edgeQuery = edge.func(
-    	'sql-maxpower', 
-    	_.extend({source: query},handler)),
+    function simpleQuery(query, connectionString) {
+      var edgeQuery = edge.func('sql-maxpower', 
+				{connectionString: connectionString, source: query}),
     	def =  Deferred();
       	edgeQuery({}, function (error, result) {
-    	if (error) {
-      		def.reject(error);
-      		return;
-    	}
-    	var i;
-    	for (i=0; i< result.length-1; i++){
-      		if (raw){
-    		def.notify(result[i]);
-    		} else {
-    		def.notify(simpleObjectify(result[i].meta, result[i].rows));
-      		}
-    	}
-    	if (raw) {
-      		def.resolve(result[i]);
-    	} else {
-      		def.resolve(simpleObjectify(result[i].meta, result[i].rows));
-    	}
+    		if (error) {
+      			def.reject(error);
+      			return;
+    		}
+			def.resolve(simpleObjectify(result[0].meta, result[0].rows );
       	});
       	return def.promise();
     };
     
-This example uses a function, simpleObjectify, to transform raw-data coming from sql-server into plain objects:
+This example makes use of a function, simpleObjectify, to transform raw-data coming from sql-server into plain objects:
 
     /**
      * simplified objectifier having an array of column names for first argument
@@ -136,29 +125,133 @@ This example uses a function, simpleObjectify, to transform raw-data coming from
       	return result;
     }
 
+for example you could use simply use this function this way:
 
+	
+    simpleQuery('select * from orders', connectionString)
+    .done(function(result){
+		//do something with the result
+    })
+    .fail(function(err){
+		//show error
+    });
+
+
+    
+## Execute a generic sql command returning more than one resultset ##
+
+    /**
+     *  Executes a sql command and returns a deferred that will be resolved with an array of all the resultset. 
+     * @method multipleQuery
+     * @param {string} query
+     * @param {string} connectionString
+     * @returns a Deferred that will be resolved with [ [array of plain objects], [array of plain objects].. *	one 	for each resultset ]  
+     */
+    function multipleQuery(query, connectionString) {
+       var edgeQuery = edge.func('sql-maxpower', 
+				{connectionString: connectionString, source: query}),
+    	def =  Deferred();
+      	edgeQuery({}, function (error, result) {
+    		if (error) {
+	      		def.reject(error);
+      			return;
+    		}
+    		var res = [];
+    		for (i=0; i< result.length; i++){
+	    		res.push(simpleObjectify(result[i].meta, result[i].rows));
+      		}
+			def.resolve(res);
+      	});
+      	return def.promise();
+    };
+
+
+
+## Execute a generic sql command returning more than one resultset using a connection handler ##
+ /**
+     * Executes a sql command and returns a deferred that will be resolved with an array of all the resultset. 
+     * @method multipleQueryHandler
+     * @param {string} query
+     * @param {int} handler
+     * @returns a Deferred that will be resolved with [ [array of plain objects], [array of plain objects].. *	one 	for each resultset ]  
+     */
+    function multipleQueryHandler(query, handler) {
+       var edgeQuery = edge.func('sql-maxpower', 
+				{handler: handler, source: query}),
+    	def =  Deferred();
+      	edgeQuery({}, function (error, result) {
+    		if (error) {
+	      		def.reject(error);
+      			return;
+    		}
+    		var res = [];
+    		for (i=0; i< result.length; i++){
+	    		res.push(simpleObjectify(result[i].meta, result[i].rows));
+      		}
+			def.resolve(res);
+      	});
+      	return def.promise();
+    };
+
+
+
+## Execute a generic sql command returning more than one resultset, being notified one resultset at a time ##
+    /**
+     * Executes a sql command and returns a Deferred that will be notified with all resultset, one at a time.
+     * @method multipleQueryHandlerNotify
+     * @param {string} query
+     * @param {int} connection handler
+     * @returns {*}  calls the callback with  all resultset
+     */
+    function multipleQueryHandlerNotify(query, handler) {
+		var def =  Deferred(),    		
+    		lastMeta,
+    		callback = function (data, resCallBack) {
+				if(data.resolve){
+                	def.resolve();
+	                return;
+    	        }
+        		if (data.meta) {
+	                lastMeta = data.meta;
+    	        } else {
+                	def.notify(simpleObjectify(lastMeta, data.rows));
+            	}
+           	},
+       		edgeQuery = edge.func('sql-maxpower', 
+					{handler: handler, source: query, callback:callback });
+    		
+      		edgeQuery({}, function (error, result) {
+    			if (error) {
+	      			def.reject(error);
+      				return;
+    			}
+         	});
+      		return def.promise();
+    };
+
+    
 ## Execute a batch of sql commands ##
     /**
      * Executes a series of sql update/insert/delete commands
      * @method updateBatch
-     * @param query batch of sql commands to execute
-     * @param handler handler for the connection or connection string
+     * @param {string} query batch of sql commands to execute
+     * @param {int} handler handler for the connection or connection string
      * @returns {*}
      */
     function updateBatch(query,handler) {
-      var edgeQuery = edge.func('sql-maxpower', 
-			_.extend({source: query, cmd:'nonquery'},
-      		handler)),
-    def =  Deferred();
-      edgeQuery({}, function (error, result) {
-    	if (error) {
-      		def.reject(error);
-      		return;
-    	}
-    	def.resolve(result);
-      });
-      return def.promise();
+		var edgeQuery = edge.func('sql-maxpower', 
+					{handler: handler, cmd:'nonquery', source: query, callback:callback });
+		    def =  Deferred();
+      	edgeQuery({}, function (error, result) {
+    		if (error) {
+      			def.reject(error);
+      			return;
+    		}
+    		def.resolve(result);
+      	});
+      	return def.promise();
     };
+
 
 ## Get n rows at a time from a query ##
 
@@ -167,38 +260,27 @@ This example uses a function, simpleObjectify, to transform raw-data coming from
      * Gets data packets row at a time
      * @method queryPackets
      * @param {string} query
-     * @param {boolean} [raw=false]
-     * @param {number} [packSize=0]
-     * @param handler handler for the connection or connection string
+     * @param {number} packSize
+     * @param {string} connectionString 
      * @returns {*}
      */
-    function queryPackets(query, raw, packSize, handler) {
+    function queryPackets(query, packSize, connectionString) {
       var def =  Deferred(),
     	packetSize = packSize || 0,
     	lastMeta,
-    	currentSet = -1,
-    	table,
     	callback = function (data, resCallBack) {
-      		if (data.meta){
-    			currentSet += 1;
-      		}
-      		data.set = currentSet;
-      		if (raw) {
-    			def.notify(data);
-      		} else {
-    			if (data.meta) {
-      				lastMeta = data.meta;
-    			} else {
-      				def.notify({rows: simpleObjectify(lastMeta, data.rows),
-							set: currentSet});
+      		if (data.meta) {
+      			lastMeta = data.meta;
+    		} else {
+      			def.notify(simpleObjectify(lastMeta, data.rows));
     			}
       		}
     	},
-    edgeQuery = edge.func('sql-maxpower', 
-		_.extend({source: query, callback: callback, packetSize: packetSize},
-      		handler));
+    	edgeQuery = edge.func('sql-maxpower', 
+			{source: query, callback: callback, packetSize: packetSize, 
+				connectionString:connectionString});
+
       edgeQuery({}, function (error, result) {
-    		var i;
     		if (error) {
       			def.reject(error);
       			return;
@@ -208,59 +290,6 @@ This example uses a function, simpleObjectify, to transform raw-data coming from
       return def.promise();
     };
     
-for example you can use simply use this function as
-
-    queryPackets('select * from orders', false, 0, connectionString)
-    .done(function(result){
-    })
-    .fail(function(err){
-    });
 
 
-## Get N rows one at a time ##
-    /**
-     * Gets a table and returns each SINGLE row by notification. Could eventually return more than a table indeed
-     * For each table read emits a {meta:[column descriptors]} notification, and for each row of data emits a
-     *   if raw= false: {row:object read from db}
-     *   if raw= true: {row: [array of values read from db]}
-    
-     * @method queryLines
-     * @param {string} query
-     * @param {boolean} [raw=false]
-     * @param handler handler for the connection or connection string
-     * @returns {*}
-     */
-    function queryLines(query, raw, handler) {
-      var def =  Deferred(),
-    	lastMeta,
-    	objMaker,
-    	callback = function(data, resCallBack) {
-      		if (data.rows) {
-    			if (raw) {
-      				def.notify({row: data.rows[0]});
-    			} else {
-      				def.notify({row: simpleObjectifier(lastMeta,data.rows[0])});
-    			}
-     	 } else {
-    		lastMeta = data.meta;
-    		def.notify(data);
-     	 }
-    	},
-       edgeQuery = edge.func('sql-maxpower',
-    	 _.extend({source: query,callback: callback,packetSize: 1},
-    	handler));
-    	edgeQuery({}, function (error, result) {
-      		var i;
-      		if (error) {
-    			def.reject(error);
-    			return;
-      		}
-      		if (result.length === 0) {
-    			def.resolve();
-    			return;
-      		}
-      		def.reject('shouldnt reach here');
-    	});
-      	return def.promise();
-    	};
-    
+See [jsSqlServerDriver](https://github.com/gaelazzo/jsSqlServerDriver/blob/master/src/jsSqlServerDriver.js ) or [mySqlDriver](https://github.com/gaelazzo/jsSqlServerDriver/blob/master/src/jsMySqlDriver.js) for examples of using this library.

@@ -155,24 +155,75 @@ using MySql.Data.MySqlClient;
 
 
     }
-    public abstract class genericConnection {
-		public abstract  Task<object> executeQuery (string commandString, IDictionary<string, object> parameters,
-		                                             int packetSize, int timeout, Func<object, Task<object>> callback = null);
-
-		public abstract Task<object> executeQueryConn (string commandString,
-		                                                int packetSize, int timeout, Func<object, Task<object>> callback = null);
-
-		public abstract Task<object> executeNonQuery (string commandString, int timeOut);
-
-		public abstract Task<object> executeNonQueryConn (string commandString, int timeOut);
 
 
-		public abstract Task<object> open ();
+/// <summary>
+/// Exposes a generic interface to access any database
+/// </summary>
+public abstract class genericConnection {
 
-		public abstract  void close ();
-	}
+    /// <summary>
+    /// Executes a generic sql command that can return multiple tables. There are two main use case. 
+    /// If a callback is NOT given, output is in the form:
+    ///   [  result1, result2,...resultN] where result(n) is the n-th table 
+    ///  Any result table is in the form:
+    ///   {meta: [fieldName1, fieldName2,...fieldNameM], rows:[{value1, value2,...valueM}, {value1,...valueM},..]}
+    /// If a callback IS given, and packet size is NOT specified, the callback is called n+1 times, one for each returned table,
+    ///  with result1,... resultN as above. At the end it is called with {resolve:1} to notify there is no more data to process.
+    /// If a callback IS given, and packet size IS specified, the callback can be called more than one time for each result, any
+    ///   time with no more than packet size row. This can be useful if you expect to read 1 million rows and don't want to 
+    ///   wait for the last row to start process them. In this case, for each resulset, the "meta" field will be provided only for
+    ///  the first subset of rows.
+    /// </summary>
+    /// <param name="commandString"></param>
+    /// <param name="parameters"></param>
+    /// <param name="packetSize"></param>
+    /// <param name="timeout"></param>
+    /// <param name="callback"></param>
+    /// <returns></returns>
+    public abstract Task<object> executeQuery(string commandString, IDictionary<string, object> parameters,
+        int packetSize, int timeout, Func<object, Task<object>> callback = null);
 
-	public class sqlServerConn : genericConnection {
+    /// <summary>
+    /// Same as executeQuery, but the connection is opened before running command and then immediately closed.
+    /// </summary>
+    /// <param name="commandString"></param>
+    /// <param name="packetSize"></param>
+    /// <param name="timeout"></param>
+    /// <param name="callback"></param>
+    /// <returns></returns>
+    public abstract Task<object> executeQueryConn(string commandString,
+        int packetSize, int timeout, Func<object, Task<object>> callback = null);
+
+    /// <summary>
+    /// Executes a command an returns number of affected rows in an object {rowcount: number}
+    /// </summary>
+    /// <param name="commandString"></param>
+    /// <param name="timeOut"></param>
+    /// <returns></returns>
+    public abstract Task<object> executeNonQuery(string commandString, int timeOut);
+
+    /// <summary>
+    /// Same as executeNonQuery,  but the connection is opened before running command and then immediately closed.
+    /// </summary>
+    /// <param name="commandString"></param>
+    /// <param name="timeOut"></param>
+    /// <returns></returns>
+    public abstract Task<object> executeNonQueryConn(string commandString, int timeOut);
+
+    /// <summary>
+    /// Opens the connection. This is meant to be used in cojunction with a series of executeQuery calls. 
+    /// </summary>
+    /// <returns></returns>
+    public abstract Task<object> open();
+
+    /// <summary>
+    /// Closes and releases the connection. It's important to call this function as soon as the connection is not needed anymore.
+    /// </summary>
+    public abstract void close();
+}
+
+public class sqlServerConn : genericConnection {
 		private SqlConnection connection;
 		private string connectionString;
 
@@ -383,7 +434,7 @@ using MySql.Data.MySqlClient;
 						List<object> localRows = new List<object> ();
 						res ["meta"] = fieldNames;
 						if (callback != null) {
-							callback (res);                        
+							callback (res);   //Call is voluntarily NOT awaited. So processing can be done while this thread keeps reading.              
 							res = new Dictionary<string, object> ();
 						}
 

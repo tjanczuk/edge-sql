@@ -266,4 +266,3 @@ for example you can use simply use this function as
     
     
     
-![](https://travis-ci.org/gaelazzo/edge-sql.svg?branch=master) 

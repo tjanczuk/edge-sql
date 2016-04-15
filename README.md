@@ -168,7 +168,7 @@ for example you could use simply use this function this way:
 
 
 ## Execute a generic sql command returning more than one resultset using a connection handler ##
- /**
+	 /**
      * Executes a sql command and returns a deferred that will be resolved with an array of all the resultset. 
      * @method multipleQueryHandler
      * @param {string} query

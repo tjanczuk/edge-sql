@@ -292,4 +292,4 @@ for example you could use simply use this function this way:
     
 
 
-See [jsSqlServerDriver](https://github.com/gaelazzo/jsSqlServerDriver/blob/master/src/jsSqlServerDriver.js ) or [mySqlDriver](https://github.com/gaelazzo/jsSqlServerDriver/blob/master/src/jsMySqlDriver.js) for examples of using this library.
+See [jsSqlServerDriver](https://github.com/gaelazzo/jsSqlServerDriver ) or [mySqlDriver](https://github.com/gaelazzo/jsMySqlDriver) for examples of using this library.

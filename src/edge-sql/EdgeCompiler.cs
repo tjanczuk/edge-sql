@@ -169,11 +169,12 @@ public abstract class genericConnection {
     ///  Any result table is in the form:
     ///   {meta: [fieldName1, fieldName2,...fieldNameM], rows:[{value1, value2,...valueM}, {value1,...valueM},..]}
     /// If a callback IS given, and packet size is NOT specified, the callback is called n+1 times, one for each returned table,
-    ///  with result1,... resultN as above. At the end it is called with {resolve:1} to notify there is no more data to process.
+    ///  with {meta: [fieldName1, fieldName2,...fieldNameM]}, {rows:rows:[{value1, value2,...valueM}, {value1,...valueM},..]} given 
+    ///  in subsequent calls.
+    /// At the end of all resultsets the callback is called with {resolve:1} to notify there is no more data to process.
     /// If a callback IS given, and packet size IS specified, the callback can be called more than one time for each result, any
-    ///   time with no more than packet size row. This can be useful if you expect to read 1 million rows and don't want to 
-    ///   wait for the last row to start process them. In this case, for each resulset, the "meta" field will be provided only for
-    ///  the first subset of rows.
+    ///   time with no more than packet size rows. This can be useful if you expect to read 1 million rows and don't want to 
+    ///   wait for the last row to start process them. 
     /// </summary>
     /// <param name="commandString"></param>
     /// <param name="parameters"></param>
@@ -295,7 +296,7 @@ public class sqlServerConn : genericConnection {
 						res = new Dictionary<string, object> ();
 						List<object> localRows = new List<object> ();
 						res ["meta"] = fieldNames;
-						if (callback != null) {
+						if (callback != null && packetSize>0) {
 							callback (res);
 							res = new Dictionary<string, object> ();
 						}

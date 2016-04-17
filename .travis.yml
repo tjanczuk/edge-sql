@@ -17,6 +17,7 @@ addons:
 before_install:
 - mysql -e "create database IF NOT EXISTS test;" -uroot
 - npm install -g grunt-cli
+- nuget restore ./src/edge-sql.sln
 
 install:
   - sudo apt-key adv --keyserver pgp.mit.edu --recv-keys 3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF
@@ -25,6 +26,8 @@ install:
   - sudo apt-get update
   - echo "deb http://download.mono-project.com/repo/debian wheezy-apache24-compat main" | sudo tee -a /etc/apt/sources.list.d/mono-xamarin.list
   - sudo apt-get install mono-devel
-  - npm install -g grunt-cli
+  - sudo apt-get install nunit-console
   - npm install edge
   - npm install
+  - xbuild ./src/edge-sql.sln
+  - nunit-console ./src/unitTest/bin/Debug/unitTest.dll

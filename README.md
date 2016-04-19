@@ -1,4 +1,4 @@
-edge-sql-maxpower
+edge-sql
 =======
 
 This is a SQL compiler for edge.js branched from [edge-sql](https://github.com/tjanczuk/edge-sql "edge-sql"). It allows accessing databases from Node.js using [Edge.js](https://github.com/tjanczuk/edge "Edge.js") through ADO.NET 

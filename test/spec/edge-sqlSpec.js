@@ -30,7 +30,6 @@ else {
     dbConfig = JSON.parse(fs.readFileSync(configName).toString());
 }
 
-
 describe('edgeSql ', function () {
     var sqlConn,
         dbInfo = {

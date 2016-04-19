@@ -29,4 +29,3 @@ install:
   - sudo apt-get install nunit-console
   - npm install edge
   - npm install
- 

@@ -39,6 +39,15 @@ describe('edgeSql ', function () {
                         "Pooling=False;Connection Timeout=600;Allow User Variables=True;"
             },
         driver='mySql';
+    if (process.env.TRAVIS) {
+        dbInfo = {
+            good: "Server=127.0.0.1;database=test;uid=root;pwd=;"+
+            "Pooling=False;Connection Timeout=600;Allow User Variables=True;",
+            bad:  "Server=127.0.0.1;database=test;uid=root;pwd=x;"+
+            "Pooling=False;Connection Timeout=600;Allow User Variables=True;"
+        };
+    
+    }
 
     function getConnection(dbCode) {
         var connString = dbInfo[dbCode];

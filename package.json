@@ -6,6 +6,10 @@
   "main": "src/edge-sql.js",
   "engines": { "node": ">= 0.6" },
   "licenses": [ { "type": "Apache", "url": "http://www.apache.org/licenses/LICENSE-2.0" } ],
+  "directories": {
+    "bin": "src",
+    "test": "test"
+  },
   "dependencies": {
     "lodash": "~4.6.1",
     "JQDeferred": "^2.1.0",
@@ -13,7 +17,9 @@
     "edge": "~5.0.0"
   },
   "homepage": "https://github.com/gaelazzo/edge-sql",
-
+  "scripts": {
+    "test": "grunt test"
+  },
   "devDependencies": {
     "grunt": "~0.4.5",
     "grunt-contrib-watch": "1.0.0",

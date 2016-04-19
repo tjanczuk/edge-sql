@@ -17,7 +17,7 @@ addons:
 before_install:
 - mysql -e "create database IF NOT EXISTS test;" -uroot
 - npm install -g grunt-cli
-- nuget restore ./src/edge-sql.sln
+
 
 install:
   - sudo apt-key adv --keyserver pgp.mit.edu --recv-keys 3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF

@@ -1,5 +1,5 @@
-{ "server": "127.0.0.1",
+{ "server": "localhost",
   "dbName": "test",
-  "user": "nino",
-  "pwd": "falco"
+  "user": "user1",
+  "pwd": "user1user1"
 }

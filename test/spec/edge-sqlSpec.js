@@ -33,9 +33,9 @@ else {
 describe('edgeSql ', function () {
     var sqlConn,
         dbInfo = {
-            good: "Server=127.0.0.1;database=test;uid=user1;pwd=user1;"+
+            good: "Server=localhost;database=test;uid=user1;pwd=user1user1;"+
                             "Pooling=False;Connection Timeout=600;Allow User Variables=True;",
-            bad:  "Server=127.0.0.1;database=test;uid=user1;pwd=x;"+
+            bad:  "Server=localhost;database=test;uid=user1;pwd=x;"+
                         "Pooling=False;Connection Timeout=600;Allow User Variables=True;"
             },
         driver='mySql';

@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "JQDeferred": "^2.1.0",
-    "edge": "https://github.com/agracio/edge-js",
+    "edge": "git+https://github.com/agracio/edge-js",
     "edge-db": "git+https://github.com/gaelazzo/edge-db.git",
     "lodash": "~4.6.1"
   },

@@ -21,15 +21,15 @@ module.exports = function (grunt) {
                     version: '<%= pkg.version %>',
                     url: '<%= pkg.homepage %>',
                     options: {
-                        paths: ['./lib'],
+                        paths: ['./src'],
                         outdir: 'doc'
                     }
                 }
             },
 
             watch: {
-                files: ['src/edge-sql.js'],
-                tasks: ['karma:unit:run'],
+                files: ['src/*.js','test/spec/*.js'],
+                tasks: ['jasmine_node'],
                 options: {
                     livereload: true
                 }

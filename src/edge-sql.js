@@ -99,7 +99,7 @@ EdgeConnection.prototype.getDbConn = function () {
 EdgeConnection.prototype.open = function () {
 	var def = defer(),
 		that = this,
-		edge      = require('edge'),
+		edge      = require('edge-js'),
 		edgeOpenInternal = edge.func(this.sqlCompiler,
 			{
 				source: 'open',
@@ -130,7 +130,7 @@ EdgeConnection.prototype.open = function () {
 EdgeConnection.prototype.close = function () {
 	var def = defer(),
 		that = this,
-		edge      = require('edge');
+		edge      = require('edge-js');
 	if (this.edgeHandler===null) {
 		def.resolve();
 		return def;
@@ -162,7 +162,7 @@ EdgeConnection.prototype.close = function () {
  * @returns {defer}  a sequence of {[array of plain objects]} or {meta:[column names],rows:[arrays of raw data]}
  */
 EdgeConnection.prototype.queryBatch = function (query, raw) {
-	var edge      = require('edge'),
+	var edge      = require('edge-js'),
 		edgeQuery = edge.func(this.sqlCompiler, _.assign({source: query}, this.getDbConn())),
 		def = defer();
 	process.nextTick(function () {
@@ -200,7 +200,7 @@ EdgeConnection.prototype.queryBatch = function (query, raw) {
  * @returns {*}
  */
 EdgeConnection.prototype.updateBatch = function (query) {
-	var edge      = require('edge'),
+	var edge      = require('edge-js'),
 		edgeQuery = edge.func(this.sqlCompiler, _.assign({source: query, cmd: 'nonquery'},
 		this.getDbConn())),
 		def = defer();
@@ -247,7 +247,7 @@ EdgeConnection.prototype.queryLines = function (query, raw) {
 				def.notify(data);
 			}
 		},
-		edge      = require('edge'),
+		edge      = require('edge-js'),
 		edgeQuery = edge.func(this.sqlCompiler,
 			_.assign({source: query, callback: callback, packetSize: 1},
 				this.getDbConn()));
@@ -311,7 +311,7 @@ EdgeConnection.prototype.queryPackets = function (query, raw, packSize) {
 		};
 	var that = this;
 	process.nextTick(function () {
-		var edge      = require('edge'),
+		var edge      = require('edge-js'),
 			edgeQuery = edge.func(that.sqlCompiler, _.assign({source: query, callback: callback, packetSize: packetSize},
 			that.getDbConn()));
 

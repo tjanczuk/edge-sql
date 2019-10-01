@@ -29,7 +29,7 @@
     "JQDeferred": "^2.1.0",
     "edge-js": "git://github.com/agracio/edge-js.git",
     "edge-db": "git+https://github.com/gaelazzo/edge-db.git",
-    "lodash": "~4.6.1"
+    "lodash": "4.17.15"
   },
   "homepage": "https://github.com/gaelazzo/edge-sql",
   "scripts": {
@@ -41,7 +41,7 @@
     "grunt-contrib-yuidoc": "1.0.0",
     "grunt-jasmine-node": "git://github.com/gaelazzo/grunt-jasmine-node.git",
     "jasmine-collection-matchers": "*",
-    "jasmine-core": "2.2.0",
+    "jasmine-core": "^2.99.1",
     "jasmine-node": "2.0.0-beta4",
     "load-grunt-tasks": "^3.5.2",
     "time-grunt": "^1.4.0"

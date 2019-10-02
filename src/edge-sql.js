@@ -188,7 +188,7 @@ EdgeConnection.prototype.queryBatch = function (query, raw) {
 			}
 		});
 	});
-	return def;
+	return def.promise();
 };
 
 
@@ -363,6 +363,7 @@ EdgeConnection.prototype.run = function (script) {
 	if (curr.trim() !== '') {
 		blocks.push(curr);
 	}
+
 
 	var def = defer(),
 		index = 0;

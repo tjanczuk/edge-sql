@@ -1,4 +1,4 @@
-
+/*globals expect,describe */
 'use strict';
 var _ = require('lodash');
 var fs = require("fs");
@@ -31,14 +31,37 @@ else {
 }
 
 describe('edgeSql ', function () {
-    var sqlConn,
+    let sqlConn,dbInfo,driver;
+    let sqlServer=false;
+    if (sqlServer){
+        /*
+        "data source=" + Server +
+        ";initial catalog=" + Database +
+        ";User ID =" + UserDB +
+        ";Password=" + PasswordDB +
+        ";Application Name=" + AppName + ";" +
+        "WorkStation ID =" + Environment.MachineName +
+        ";Pooling=false" +
+        ";Connection Timeout=300;"
+         */
+
         dbInfo = {
-            good: "Server=localhost;database=test;uid=user1;pwd=user1user1;"+
-                            "Pooling=False;Connection Timeout=600;Allow User Variables=True;",
-            bad:  "Server=localhost;database=test;uid=user1;pwd=x;"+
-                        "Pooling=False;Connection Timeout=600;Allow User Variables=True;"
-            },
-        driver='mySql';
+            good: "data source=localhost;initial catalog=test;User ID =user1;Password=user1user1;" +
+                "Pooling=False;Connection Timeout=600;",
+            bad: "data source=localhost;initial catalog=test;User ID =user1;Password=x;" +
+                "Pooling=False;Connection Timeout=600;"
+        };
+        driver = 'sqlServer';
+    }
+    else {
+        dbInfo = {
+            good: "Server=localhost;database=test;uid=user1;pwd=user1user1;" +
+                "Pooling=False;Connection Timeout=600;Allow User Variables=True;",
+            bad: "Server=localhost;database=test;uid=user1;pwd=x;" +
+                "Pooling=False;Connection Timeout=600;Allow User Variables=True;"
+        };
+        driver = 'mySql';
+    }
     if (process.env.TRAVIS) {
         dbInfo = {
             good: "Server=127.0.0.1;database=test;uid=root;pwd=;"+
@@ -78,7 +101,7 @@ describe('edgeSql ', function () {
 
     describe('setup dataBase', function () {
         it('should run the setup script', function (done) {
-            sqlConn.run(fs.readFileSync(path.join('test', 'setup.sql')).toString())
+            sqlConn.run(fs.readFileSync(path.join('test', driver+'Setup.sql')).toString())
             .done(function () {
                 expect(true).toBeTruthy();
                 done();
@@ -142,7 +165,11 @@ describe('edgeSql ', function () {
     describe('various', function () {
 
         it('select now() should give results', function (done) {
-            sqlConn.queryBatch('SELECT now() as currtime')
+            var sql = 'SELECT now() as currtime';
+            if (driver==='sqlServer'){
+                sql= 'SELECT getdate() as currtime';
+            }
+            sqlConn.queryBatch(sql)
             .done(function (result) {
                 expect(result).toBeDefined();
                 done();
@@ -187,8 +214,12 @@ describe('edgeSql ', function () {
 
 
         it('notify should be called from queryRaw when multiple result got (two select)', function (done) {
-            var progressCalled, nResult = 0;
-            sqlConn.queryBatch('select * from customer limit 5; select * from seller limit 10; ')
+            let progressCalled, nResult = 0;
+            let sql='select * from customer limit 5; select * from seller limit 10; ';
+            if (driver==='sqlServer'){
+                sql='select top 5 * from customer; select top 10 * from seller; ';
+            }
+            sqlConn.queryBatch(sql)
             .progress(function (result) {
                 expect(result).toBeDefined();
                 expect(result.length).toBe(5);
@@ -210,10 +241,16 @@ describe('edgeSql ', function () {
 
         it('notify should be called from queryRaw when multiple result got (three select)', function (done) {
             var len            = [];
-            sqlConn.queryBatch('select * from seller limit 1;select * from seller limit 3;select * from customer limit 5;'+
-                'select * from seller limit 10;select * from customer limit 2;')
+            let sql='select * from seller limit 1;select * from seller limit 3;select * from customer limit 5;'+
+                'select * from seller limit 10;select * from customer limit 2;';
+            if (driver==='sqlServer'){
+                sql='select top 1 * from seller;select top 3 *  from seller;select top 5  * from customer;'+
+                    'select top 10 * from seller;select top 2 * from customer;';
+            }
+
+            sqlConn.queryBatch(sql)
             .progress(function (result) {
-                len.push(result.length)
+                len.push(result.length);
                 return true;
             })
             .fail(function (err) {
@@ -221,7 +258,7 @@ describe('edgeSql ', function () {
                 done();
             })
             .done(function (result) {
-                len.push(result.length)
+                len.push(result.length);
                 expect(len).toEqual([1,3, 5, 10, 2]);
                 done();
             });
@@ -233,9 +270,14 @@ describe('edgeSql ', function () {
 
 
         it('queryLines should return as many meta as read tables ', function (done) {
+            console.log("queryLines check start");
             var nResp = 0;
-            sqlConn.queryLines(
-                'select * from customer limit 10; select * from seller limit 20;select * from customerkind limit 2',true)
+            let sql='select * from customer limit 10; select * from seller limit 20;select * from customerkind limit 2';
+            if (driver==='sqlServer') {
+                sql='select top 10 * from customer ; select top 20 * from seller ;select top 2 * from customerkind';
+            }
+
+            sqlConn.queryLines(sql,true)
             .progress(function (r) {
                 expect(r).toBeDefined();
                 if (r.meta) {
@@ -254,8 +296,11 @@ describe('edgeSql ', function () {
         });
 
         it('meta returned from queryLines should be arrays ', function (done) {
-            sqlConn.queryLines(
-                'select * from sellerkind limit 10; select * from seller limit 20; select * from customerkind limit 2;', true)
+            let sql= 'select * from sellerkind limit 10; select * from seller limit 20; select * from customerkind limit 2;';
+            if (driver==='sqlServer') {
+                sql= 'select top 10 * from sellerkind ; select top 20 * from seller ; select top 2 * from customerkind;';
+            }
+            sqlConn.queryLines(sql, true)
             .progress(function (r) {
                 if (r.meta) {
                     expect(r.meta).toEqual(jasmine.any(Array));
@@ -273,7 +318,11 @@ describe('edgeSql ', function () {
 
         it('queryLines should return all rows one at a time', function (done) {
             var nResp = 0;
-            sqlConn.queryLines('select * from seller limit 5;', true)
+            let sql='select * from seller limit 5;';
+            if (driver==='sqlServer') {
+                sql= 'select top 5 * from seller ;';
+            }
+            sqlConn.queryLines(sql, true)
             .progress(function (r) {
                 expect(r).toBeDefined();
                 if (r.row) {
@@ -293,7 +342,11 @@ describe('edgeSql ', function () {
 
         it('queryLines should return row as arrays ', function (done) {
             var nResp = 0;
-            sqlConn.queryLines('select * from customerkind limit 5;', true)
+            let sql='select * from customerkind limit 5;';
+            if (driver==='sqlServer') {
+                sql= 'select top 5 * from customerkind ;';
+            }
+            sqlConn.queryLines(sql, true)
             .progress(function (r) {
                 if (r.row) {
                     nResp += 1;
@@ -312,7 +365,11 @@ describe('edgeSql ', function () {
 
         it('queryLines should return row as objects when raw=false ', function (done) {
             var nResp = 0;
-            sqlConn.queryLines('select  * from customerkind limit 5;', false)
+            var sql= 'select  * from customerkind limit 5;';
+            if (driver==='sqlServer'){
+                sql= 'select  top 5 * from customerkind;';
+            }
+            sqlConn.queryLines(sql, false)
             .progress(function (r) {
                 if (r.row) {
                     nResp += 1;
@@ -335,7 +392,12 @@ describe('edgeSql ', function () {
 
         it('queryLines should work with multiple results ', function (done) {
             var nResp = 0;
-            sqlConn.queryLines('select  * from customerkind limit 5; select * from customer limit 10;', false)
+            var sql= 'select  * from customerkind limit 5; select * from customer limit 10;';
+            if (driver==='sqlServer'){
+                sql= 'select  top 5 * from customerkind; select top 10 * from customer;';
+            }
+
+            sqlConn.queryLines(sql, false)
             .progress(function (r) {
                 if (r.row) {
                     nResp += 1;
@@ -371,7 +433,7 @@ describe('edgeSql ', function () {
 
     describe('clear dataBase', function () {
         it('should run the destroy script', function (done) {
-            sqlConn.run(fs.readFileSync(path.join('test','destroy.sql')).toString())
+            sqlConn.run(fs.readFileSync(path.join('test',driver+'Destroy.sql')).toString())
             .done(function () {
                 expect(true).toBeTruthy();
                 done();

@@ -27,8 +27,8 @@
   },
   "dependencies": {
     "JQDeferred": "^2.1.0",
-    "edge-js": "git://github.com/agracio/edge-js.git",
     "edge-db": "git+https://github.com/gaelazzo/edge-db.git",
+    "edge-js": "git://github.com/agracio/edge-js.git",
     "lodash": "4.17.15"
   },
   "homepage": "https://github.com/gaelazzo/edge-sql",
@@ -36,15 +36,21 @@
     "test": "grunt test"
   },
   "devDependencies": {
-    "grunt": "~0.4.5",
+    "grunt": "1.3.0",
     "grunt-contrib-watch": "^1.1.0",
     "grunt-contrib-yuidoc": "1.0.0",
     "grunt-jasmine-node": "git://github.com/gaelazzo/grunt-jasmine-node.git",
     "jasmine-collection-matchers": "*",
-    "jasmine-core": "^2.99.1",
-    "jasmine-node": "2.0.0-beta4",
-    "load-grunt-tasks": "^3.5.2",
+    "jasmine-core": "3.6.0",
+    "jasmine-node": "3.0.0",
+    "load-grunt-tasks": "5.1.0",
     "time-grunt": "^1.4.0"
+  },
+  "eslintConfig": {
+    "env": {
+      "browser": false,
+      "node": true
+    }
   },
   "repository": {
     "type": "git",

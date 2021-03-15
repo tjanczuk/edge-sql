@@ -1,13 +1,13 @@
-'use strict';
+/*globals require */
+"use strict";
 
 /**
- * @property Deferred
- * @type {defer}
+ * @property defer
+ * @type {function}
  */
-var defer     = require("JQDeferred");
-var _         = require('lodash');
-var isolationLevels=['READ_UNCOMMITTED','READ_COMMITTED','REPEATABLE_READ','SNAPSHOT','SERIALIZABLE']
-
+const defer     = require("JQDeferred");
+const _         = require('lodash');
+const isolationLevels=['READ_UNCOMMITTED','READ_COMMITTED','REPEATABLE_READ','SNAPSHOT','SERIALIZABLE'];
 
 
 module.exports = {
@@ -54,6 +54,15 @@ function EdgeConnection(connectionString, driver) {
 	this.edgeHandler = null;
 	this.driver = driver||'mySql';
 	this.connectionString = connectionString;
+
+	/*references:["MySqlData.dll",
+					"System.Data.SqlClient.dll",
+					"Microsoft.Extension.Configuration.dll",
+					"System.Configuration.ConfigurationManager.dll"],*/
+	//assemblyFile:"edge-db-fake.dll",
+	//this.typeName="EdgeCompiler2";		//Startup
+	//this.methodName="CompileFunc2";	//Invoke
+
 }
 
 
@@ -67,7 +76,7 @@ function EdgeConnection(connectionString, driver) {
  * @returns {object}
  */
 function simpleObjectifier(colNames, row) {
-	var obj = {};
+	let obj = {};
 	_.each(colNames, function (value, index) {
 		obj[value] = row[index];
 	});
@@ -91,21 +100,34 @@ EdgeConnection.prototype.getDbConn = function () {
 
 
 /**
- * Opens the phisical connection
- * @method edgeOpen
- * @private
- * @returns {*}
+ * Opens the physical connection
+ * @public
+ * @methodo open
+ * @returns {promise}  Returns a promise that is resolved when connection is established
  */
 EdgeConnection.prototype.open = function () {
-	var def = defer(),
+	const def = defer(),
 		that = this,
 		edge      = require('edge-js'),
+		/**
+		 * Opens the phisical connection
+		 * @method edgeOpenInternal
+		 * @private
+		 * @returns {promise}
+		 */
 		edgeOpenInternal = edge.func(this.sqlCompiler,
 			{
 				source: 'open',
 				connectionString: this.connectionString,
 				cmd: 'open',
-				driver: this.driver
+				driver: this.driver,
+				/*references:["MySqlData.dll",
+					"System.Data.SqlClient.dll",
+					"Microsoft.Extension.Configuration.dll",
+					"System.Configuration.ConfigurationManager.dll"],*/
+				//assemblyFile:"edge-db-fake.dll",
+				//typeName:"EdgeCompiler",		//Startup
+				//methodName:"CompileFunc"	//Invoke
 			});
 	edgeOpenInternal({}, function (error, result) {
 		if (error) {
@@ -117,7 +139,7 @@ EdgeConnection.prototype.open = function () {
 			def.resolve();
 			return;
 		}
-		def.reject('shouldnt reach here');
+		def.reject("shouldn't reach here");
 	});
 	return def.promise();
 };
@@ -128,14 +150,16 @@ EdgeConnection.prototype.open = function () {
  * @returns {*}
  */
 EdgeConnection.prototype.close = function () {
-	var def = defer(),
+	let def = defer(),
 		that = this,
 		edge      = require('edge-js');
+
 	if (this.edgeHandler===null) {
 		def.resolve();
 		return def;
 	}
-	var	edgeClose = edge.func(this.sqlCompiler,
+
+	let	edgeClose = edge.func(this.sqlCompiler,
 			{
 				handler: this.edgeHandler,
 				source: 'close',
@@ -165,29 +189,37 @@ EdgeConnection.prototype.queryBatch = function (query, raw) {
 	var edge      = require('edge-js'),
 		edgeQuery = edge.func(this.sqlCompiler, _.assign({source: query}, this.getDbConn())),
 		def = defer();
+	//nextTick is necessary in order to run the sql function asyncronously, otherwise, cause of edge-js
+	//  and mysql blocking nature, it starts notifying tables before the promise is actually returned
+	//   causing data to be loss
+
+
 	process.nextTick(function () {
 		edgeQuery({}, function (error, result) {
-
+			//console.log("receiving result");
+			//console.log(result);
 			if (error) {
 				def.reject(error + ' running ' + query);
-				return;
+				return def.promise();
 			}
-			var i;
+			let i;
 			for (i = 0; i < result.length - 1; i++) {
 				if (raw) {
 					def.notify(result[i]);
-				} else {
+				}
+				else {
 					def.notify(simpleObjectify(result[i].meta, result[i].rows));
 				}
 			}
-
 			if (raw) {
 				def.resolve(result[i]);
-			} else {
+			}
+			else {
 				def.resolve(simpleObjectify(result[i].meta, result[i].rows));
 			}
 		});
 	});
+
 	return def.promise();
 };
 
@@ -200,7 +232,7 @@ EdgeConnection.prototype.queryBatch = function (query, raw) {
  * @returns {*}
  */
 EdgeConnection.prototype.updateBatch = function (query) {
-	var edge      = require('edge-js'),
+	let  edge      = require('edge-js'),
 		edgeQuery = edge.func(this.sqlCompiler, _.assign({source: query, cmd: 'nonquery'},
 		this.getDbConn())),
 		def = defer();
@@ -229,12 +261,12 @@ EdgeConnection.prototype.updateBatch = function (query) {
  * @returns {*}
  */
 EdgeConnection.prototype.queryLines = function (query, raw) {
-	var def = defer(),
+	let def = defer(),
 		lastMeta,
 		callback = function (data) {
 			if (data.resolve) {
 				def.resolve();
-				return;
+				return {};
 			}
 			if (data.rows) {
 				if (raw) {
@@ -246,21 +278,24 @@ EdgeConnection.prototype.queryLines = function (query, raw) {
 				lastMeta = data.meta;
 				def.notify(data);
 			}
+			return {};
 		},
 		edge      = require('edge-js'),
 		edgeQuery = edge.func(this.sqlCompiler,
 			_.assign({source: query, callback: callback, packetSize: 1},
 				this.getDbConn()));
-	edgeQuery({}, function (error, result) {
-		if (error) {
-			def.reject(error + ' running ' + query);
-			return;
-		}
-		if (result.length === 0) {
-			//def.resolve();
-			return;
-		}
-		def.reject('shouldnt reach here - running ' + query);
+	process.nextTick(function() {
+		edgeQuery({}, function (error, result) {
+			if (error) {
+				def.reject(error + ' running ' + query);
+				return;
+			}
+			if (result.length === 0) {
+				//def.resolve();
+				return {};
+			}
+			return {};
+		});
 	});
 	return def.promise();
 };
@@ -270,7 +305,7 @@ EdgeConnection.prototype.queryLines = function (query, raw) {
 /**
  * the "edgeQuery" function is written in c#, and executes a series of select.
  * If a callback is specified, data is returned separately as {meta} - {rows} - {meta} - {rows} .. notifications
- * in this case has sense the parameter packetSize to limit the length of rows returned in each {rows} packet
+ * in this case has sense the parameter packetSize to limit the number of rows returned in each {rows} packet
  * If a callback is not specified, data is returned as a series of {meta, rows} notifications
  * A field "set" is also attached to any packet in order to identify the result set
  * if raw==false and a table (array of plain objects) is returned, the "set" field is attached to that array
@@ -279,6 +314,7 @@ EdgeConnection.prototype.queryLines = function (query, raw) {
 
 /**
  * Gets data packets row at a time
+ * @public
  * @method queryPackets
  * @param {string} query
  * @param {boolean} [raw=false]
@@ -286,14 +322,14 @@ EdgeConnection.prototype.queryLines = function (query, raw) {
  * @returns {*}
  */
 EdgeConnection.prototype.queryPackets = function (query, raw, packSize) {
-	var def = defer(),
+	let def = defer(),
 		packetSize = packSize || 0,
 		lastMeta,
 		currentSet = -1,
 		callback = function (data) {
 			if (data.resolve) {
 				def.resolve();
-				return;
+				return {};
 			}
 			if (data.meta) {
 				currentSet += 1;
@@ -308,19 +344,22 @@ EdgeConnection.prototype.queryPackets = function (query, raw, packSize) {
 					def.notify({rows: simpleObjectify(lastMeta, data.rows), set: currentSet});
 				}
 			}
+			return {};
 		};
-	var that = this;
+	let that = this;
+	//nextTick is necessary in order to run the sql function asyncronously, otherwise, cause of edge-js
+	//  and mysql blocking nature, it starts notifying tables before the promise is actually returned
+	//   causing data to be loss
 	process.nextTick(function () {
-		var edge      = require('edge-js'),
+		let edge      = require('edge-js'),
 			edgeQuery = edge.func(that.sqlCompiler, _.assign({source: query, callback: callback, packetSize: packetSize},
 			that.getDbConn()));
 
 		edgeQuery({}, function (error) {
 			if (error) {
 				def.reject(error + ' running ' + query);
-				return;
+				return def.promise();
 			}
-			//console.log('resolving '+query);
 			//def.resolve();
 		});
 	});
@@ -331,12 +370,13 @@ EdgeConnection.prototype.queryPackets = function (query, raw, packSize) {
 
 /**
  * Runs a sql script, eventually composed of multiple blocks separed by GO lines
+ * @public
  * @method run
  * @param {string} script
  * @returns {*}
  */
 EdgeConnection.prototype.run = function (script) {
-	var os = require('os'),
+	let os = require('os'),
 		//noinspection JSUnresolvedVariable
 		lines = script.split(os.EOL),
 		blocks = [],
@@ -365,7 +405,7 @@ EdgeConnection.prototype.run = function (script) {
 	}
 
 
-	var def = defer(),
+	let def = defer(),
 		index = 0;
 
 

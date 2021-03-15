@@ -1,9 +1,13 @@
 'use strict';
-/*globals initConfig, appPath */
+/*globals initConfig, appPath, process */
 /*jshint camelcase: false */
 
 module.exports = function (grunt) {
-
+    //process.env.EDGE_USE_CORECLR=1;
+    //process.env.CORECLR_DIR="C:/Users/Utente/.nuget/packages/microsoft.csharp/";
+    //process.env.CORECLR_DIR= "C:/Program Files/dotnet/shared/Microsoft.NETCore.App/";
+    //process.env.CORECLR_DIR= "C:/Program Files/dotnet/shared";
+    //process.env.CORECLR_VERSION = "5.0.4";
     // Load grunt tasks automatically
     require('load-grunt-tasks')(grunt);
     // Time how long tasks take. Can help when optimizing build times

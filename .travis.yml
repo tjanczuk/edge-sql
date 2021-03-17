@@ -1,6 +1,6 @@
 language: node_js
 node_js:
-  - "8"
+  - "14"
 services:
     - mysql
     -
@@ -33,3 +33,4 @@ install:
   - sudo apt-get install nunit-console
   - npm install edge
   - npm install
+  - npm install edge-js

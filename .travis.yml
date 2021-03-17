@@ -31,6 +31,4 @@ install:
   - echo "deb http://download.mono-project.com/repo/debian wheezy-apache24-compat main" | sudo tee -a /etc/apt/sources.list.d/mono-xamarin.list
   - sudo apt-get install mono-devel
   - sudo apt-get install nunit-console
-  - npm install edge
   - npm install
-  - npm install edge-js
